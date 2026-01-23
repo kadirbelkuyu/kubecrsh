@@ -1,0 +1,17 @@
+.DS_Store
+bin/
+reports/
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.log
+coverage.out
+coverage.html
+debug.log
+secret.yaml
+.agent
+scripts/
+docs/
+Makefile
