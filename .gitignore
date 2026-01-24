@@ -11,7 +11,4 @@ coverage.out
 coverage.html
 debug.log
 secret.yaml
-.agent
-scripts/
 docs/
-Makefile
