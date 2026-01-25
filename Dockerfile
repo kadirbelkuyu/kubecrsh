@@ -1,0 +1,22 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /build
+
+RUN apk add --no-cache git ca-certificates
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
+    -ldflags '-w -s -extldflags "-static"' \
+    -o kubecrsh ./cmd/kubecrsh
+
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /build/kubecrsh /kubecrsh
+
+ENTRYPOINT ["/kubecrsh"]
+CMD ["daemon"]

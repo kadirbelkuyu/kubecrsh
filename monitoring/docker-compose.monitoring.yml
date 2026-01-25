@@ -1,0 +1,81 @@
+services:
+  kubecrsh:
+    image: alpine:latest
+    container_name: kubecrsh-daemon
+    working_dir: /app
+    volumes:
+      - ../bin/kubecrsh-linux:/app/kubecrsh:ro
+      - ~/.kube:/root/.kube:ro
+    command: ["/app/kubecrsh", "daemon", "--http-addr", "0.0.0.0:8080"]
+    ports:
+      - "8080:8080"
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: kubecrsh-prometheus
+    depends_on:
+      - kubecrsh
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:latest
+    container_name: kubecrsh-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: kubecrsh-promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - ../reports:/var/log/kubecrsh
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: kubecrsh-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  loki-data:
+  grafana-data:

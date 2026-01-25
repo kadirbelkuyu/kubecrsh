@@ -1,0 +1,36 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - gocritic
+    - revive
+    - bodyclose
+    - unparam
+    - prealloc
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/kadirbelkuyu/kubecrsh
+  misspell:
+    locale: US
+  revive:
+    confidence: 0.8
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+        - staticcheck
+
+run:
+  timeout: 5m
+  tests: true
