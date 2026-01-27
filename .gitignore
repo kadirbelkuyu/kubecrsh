@@ -12,5 +12,4 @@ coverage.html
 debug.log
 secret.yaml
 docs/
-.agent
 .scripts
