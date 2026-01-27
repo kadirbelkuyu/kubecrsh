@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	corev1 "k8s.io/api/core/v1"
@@ -15,12 +16,14 @@ import (
 type CrashHandler func(crash domain.PodCrash)
 
 type Watcher struct {
-	client    kubernetes.Interface
-	namespace string
-	factory   informers.SharedInformerFactory
-	handler   CrashHandler
-	reasons   map[string]bool
-	mu        sync.RWMutex
+	client            kubernetes.Interface
+	namespace         string
+	factory           informers.SharedInformerFactory
+	handler           CrashHandler
+	reasons           map[string]bool
+	lastNotifications map[string]time.Time
+	dedupTTL          time.Duration
+	mu                sync.RWMutex
 }
 
 type Option func(*Watcher)
@@ -39,6 +42,12 @@ func WithReasons(reasons []string) Option {
 	}
 }
 
+func WithDedupTTL(ttl time.Duration) Option {
+	return func(w *Watcher) {
+		w.dedupTTL = ttl
+	}
+}
+
 func New(client kubernetes.Interface, handler CrashHandler, opts ...Option) *Watcher {
 	w := &Watcher{
 		client:  client,
@@ -48,6 +57,8 @@ func New(client kubernetes.Interface, handler CrashHandler, opts ...Option) *Wat
 			"Error":            true,
 			"CrashLoopBackOff": true,
 		},
+		lastNotifications: make(map[string]time.Time),
+		dedupTTL:          5 * time.Minute,
 	}
 
 	for _, opt := range opts {
@@ -90,8 +101,31 @@ func (w *Watcher) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to sync cache")
 	}
 
+	go w.cleanupCacheLoop(ctx)
+
 	<-ctx.Done()
 	return nil
+}
+
+func (w *Watcher) cleanupCacheLoop(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			w.mu.Lock()
+			now := time.Now()
+			for k, t := range w.lastNotifications {
+				if now.Sub(t) > w.dedupTTL*2 {
+					delete(w.lastNotifications, k)
+				}
+			}
+			w.mu.Unlock()
+		}
+	}
 }
 
 func (w *Watcher) onUpdate(oldObj, newObj interface{}) {
@@ -115,7 +149,9 @@ func (w *Watcher) detectCrashes(oldPod, newPod *corev1.Pod) {
 		}
 
 		if crash := w.checkContainerCrash(newPod, cs, oldStatus); crash != nil {
-			w.handler(*crash)
+			if w.shouldNotify(crash) {
+				w.handler(*crash)
+			}
 		}
 	}
 }
@@ -223,10 +259,26 @@ func (w *Watcher) shouldHandle(reason string) bool {
 	return w.reasons[reason]
 }
 
+func (w *Watcher) shouldNotify(crash *domain.PodCrash) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	key := fmt.Sprintf("%s/%s/%s/%s", crash.Namespace, crash.PodName, crash.ContainerName, crash.Reason)
+
+	lastTime, exists := w.lastNotifications[key]
+	if exists && time.Since(lastTime) < w.dedupTTL {
+		return false
+	}
+
+	w.lastNotifications[key] = time.Now()
+	return true
+}
+
 func (w *Watcher) checkPodOnAdd(pod *corev1.Pod) {
 	for _, cs := range pod.Status.ContainerStatuses {
 		if crash := w.checkContainerCrash(pod, cs, nil); crash != nil {
-			w.handler(*crash)
+			if w.shouldNotify(crash) {
+				w.handler(*crash)
+			}
 		}
 	}
 }

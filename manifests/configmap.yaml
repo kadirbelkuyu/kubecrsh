@@ -5,7 +5,7 @@ metadata:
   namespace: kubecrsh
 data:
   config.yaml: |
-    namespace: ""
+    namespace: kubecrsh
     reports:
       path: /data/reports
       retention: 168h
