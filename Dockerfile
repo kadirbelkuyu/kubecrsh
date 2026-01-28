@@ -7,13 +7,15 @@ RUN apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY cmd ./cmd
+COPY internal ./internal
+COPY pkg ./pkg
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags '-w -s -extldflags "-static"' \
     -o kubecrsh ./cmd/kubecrsh
 
-FROM scratch
+FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /build/kubecrsh /kubecrsh
