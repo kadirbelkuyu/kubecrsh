@@ -1,9 +1,9 @@
-name: Release
+name: Release RC
 
 on:
     push:
         tags:
-            - "v*"
+            - "v*-rc*"
 
 permissions:
     contents: write
@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
     release:
-        name: Create Release
+        name: Create RC Release
         runs-on: ubuntu-latest
-        if: ${{ !contains(github.ref_name, '-') }}
+        if: ${{ contains(github.ref_name, '-rc') }}
         steps:
             - uses: actions/checkout@v4
               with:
