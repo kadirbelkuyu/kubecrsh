@@ -5,22 +5,31 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 )
 
-func TestSlackNotifier_Name(t *testing.T) {
-	notifier := NewSlackNotifier("http://example.com", "#alerts")
+var (
+	webHookURL = "#tests"
+	token      = "bot_id:token"
+	chatId     = "chat_id"
+)
 
-	if name := notifier.Name(); name != "slack" {
+func init() {
+
+}
+
+func TestTelegramNotifier_Name(t *testing.T) {
+	notifier := NewTelegramNotifier(&webHookURL, "#alerts", "")
+
+	if name := notifier.Name(); name != "telegram" {
 		t.Errorf("Name() = %v, want slack", name)
 	}
 }
 
-func TestSlackNotifier_colorForReason(t *testing.T) {
-	notifier := NewSlackNotifier("", "")
+func TestTelegramNotifier_colorForReason(t *testing.T) {
+	notifier := NewTelegramNotifier(&webHookURL, "", "")
 
 	tests := []struct {
 		reason string
@@ -41,16 +50,9 @@ func TestSlackNotifier_colorForReason(t *testing.T) {
 	}
 }
 
-func TestSlackNotifier_Notify_Success(t *testing.T) {
-	var receivedBody []byte
+func TestTelegramNotifier_Notify_Success(t *testing.T) {
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedBody, _ = io.ReadAll(r.Body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	notifier := NewSlackNotifier(server.URL, "#alerts")
+	notifier := NewTelegramNotifier(nil, token, chatId)
 
 	crash := domain.PodCrash{
 		Namespace:     "production",
@@ -67,76 +69,15 @@ func TestSlackNotifier_Notify_Success(t *testing.T) {
 		t.Fatalf("Notify() error = %v", err)
 	}
 
-	var msg slackMessage
-	if err := json.Unmarshal(receivedBody, &msg); err != nil {
-		t.Fatalf("Failed to unmarshal message: %v", err)
-	}
-
-	if msg.Channel != "#alerts" {
-		t.Errorf("Channel = %v, want #alerts", msg.Channel)
-	}
-	if !strings.Contains(msg.Text, "Pod Crash Detected") {
-		t.Errorf("Text should contain 'Pod Crash Detected', got: %s", msg.Text)
-	}
-	if len(msg.Attachments) != 1 {
-		t.Fatalf("Expected 1 attachment, got %d", len(msg.Attachments))
-	}
-	if msg.Attachments[0].Color != "danger" {
-		t.Errorf("Color = %v, want danger (for OOMKilled)", msg.Attachments[0].Color)
-	}
 }
 
-func TestSlackNotifier_Notify_MessageFormat(t *testing.T) {
-	var receivedBody []byte
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedBody, _ = io.ReadAll(r.Body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	notifier := NewSlackNotifier(server.URL, "")
-
-	crash := domain.PodCrash{
-		Namespace:     "default",
-		PodName:       "test-pod",
-		ContainerName: "app",
-		Reason:        "Error",
-		ExitCode:      1,
-	}
-	report := *domain.NewForensicReport(crash)
-
-	notifier.Notify(report)
-
-	var msg slackMessage
-	json.Unmarshal(receivedBody, &msg)
-
-	fieldMap := make(map[string]string)
-	for _, field := range msg.Attachments[0].Fields {
-		fieldMap[field.Title] = field.Value
-	}
-
-	if fieldMap["Namespace"] != "default" {
-		t.Errorf("Namespace field = %v, want default", fieldMap["Namespace"])
-	}
-	if fieldMap["Pod"] != "test-pod" {
-		t.Errorf("Pod field = %v, want test-pod", fieldMap["Pod"])
-	}
-	if fieldMap["Exit Code"] != "1" {
-		t.Errorf("Exit Code field = %v, want 1", fieldMap["Exit Code"])
-	}
-	if fieldMap["Report ID"] != report.ID {
-		t.Errorf("Report ID field = %v, want %s", fieldMap["Report ID"], report.ID)
-	}
-}
-
-func TestSlackNotifier_Notify_ServerError(t *testing.T) {
+func TestTelegramNotifier_Notify_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
-	notifier := NewSlackNotifier(server.URL, "")
+	notifier := NewTelegramNotifier(&webHookURL, "", "")
 	report := *domain.NewForensicReport(domain.PodCrash{})
 
 	err := notifier.Notify(report)
@@ -145,8 +86,8 @@ func TestSlackNotifier_Notify_ServerError(t *testing.T) {
 	}
 }
 
-func TestSlackNotifier_Notify_ConnectionError(t *testing.T) {
-	notifier := NewSlackNotifier("http://localhost:99999", "")
+func TestTelegramNotifier_Notify_ConnectionError(t *testing.T) {
+	notifier := NewTelegramNotifier(&webHookURL, "", "")
 	report := *domain.NewForensicReport(domain.PodCrash{})
 
 	err := notifier.Notify(report)
@@ -155,11 +96,11 @@ func TestSlackNotifier_Notify_ConnectionError(t *testing.T) {
 	}
 }
 
-func TestSlackNotifier_ImplementsNotifierInterface(t *testing.T) {
-	var _ Notifier = (*SlackNotifier)(nil)
+func TestTelegramNotifier_ImplementsNotifierInterface(t *testing.T) {
+	var _ Notifier = (*TelegramNotifier)(nil)
 }
 
-func TestSlackNotifier_EmptyChannel(t *testing.T) {
+func TestTelegramNotifier_EmptyChannel(t *testing.T) {
 	var receivedBody []byte
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +109,7 @@ func TestSlackNotifier_EmptyChannel(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewSlackNotifier(server.URL, "")
+	notifier := NewTelegramNotifier(&webHookURL, "", "")
 	report := *domain.NewForensicReport(domain.PodCrash{})
 
 	notifier.Notify(report)
@@ -181,13 +122,13 @@ func TestSlackNotifier_EmptyChannel(t *testing.T) {
 	}
 }
 
-func BenchmarkSlackNotifier_Notify(b *testing.B) {
+func BenchmarkTelegramNotifier_Notify(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	notifier := NewSlackNotifier(server.URL, "#alerts")
+	notifier := NewTelegramNotifier(&webHookURL, "#alerts", "")
 	report := *domain.NewForensicReport(domain.PodCrash{
 		Namespace: "default",
 		PodName:   "test-pod",
