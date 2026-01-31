@@ -13,6 +13,7 @@ type ForensicReport struct {
 	PreviousLog []string
 	Events      []Event
 	EnvVars     map[string]string
+	Warnings    []string
 	CollectedAt time.Time
 }
 
@@ -22,6 +23,7 @@ func NewForensicReport(crash PodCrash) *ForensicReport {
 		Crash:       crash,
 		EnvVars:     make(map[string]string),
 		Events:      make([]Event, 0),
+		Warnings:    make([]string, 0),
 		CollectedAt: time.Now(),
 	}
 }
@@ -46,6 +48,13 @@ func (r *ForensicReport) SetPreviousLogs(logs []string) {
 
 func (r *ForensicReport) SetEnvVar(key, value string) {
 	r.EnvVars[key] = value
+}
+
+func (r *ForensicReport) AddWarning(msg string) {
+	if msg == "" {
+		return
+	}
+	r.Warnings = append(r.Warnings, msg)
 }
 
 func (r *ForensicReport) WarningCount() int {

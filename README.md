@@ -13,10 +13,19 @@ The application monitors pod lifecycle events and automatically gathers data whe
 
 ## Quickstart
 
-You can deploy kubecrsh to your cluster using the provided manifests:
+You can deploy kubecrsh to your cluster using the provided manifests.
 
 ```bash
-kubectl apply -f manifests/
+kubectl apply -f manifests/namespace.yaml
+kubectl apply -f manifests/rbac.yaml
+kubectl apply -f manifests/configmap.yaml
+
+cp manifests/secret.yaml.example manifests/secret.yaml
+# edit manifests/secret.yaml and set your webhook values
+kubectl apply -f manifests/secret.yaml
+
+kubectl apply -f manifests/service.yaml
+kubectl apply -f manifests/deployment.yaml
 ```
 
 For local development, build and run the binary:
@@ -91,6 +100,42 @@ The service exposes the following HTTP endpoints:
 | `/health` | Liveness probe |
 | `/ready` | Readiness probe |
 | `/metrics` | Prometheus metrics |
+| `/reports` | List saved crash reports (optional, disabled by default) |
+| `/reports/{id}` | Get a single crash report (optional, disabled by default) |
+
+After deployment you can port-forward and validate:
+
+```bash
+kubectl -n kubecrsh port-forward svc/kubecrsh 8080:8080
+curl -fsS http://127.0.0.1:8080/health
+curl -fsS http://127.0.0.1:8080/ready
+curl -fsS http://127.0.0.1:8080/metrics | head
+```
+
+## Reports API (Optional)
+
+The Reports API is disabled by default. When enabled, it provides read-only access to stored reports.
+
+Environment variables:
+
+```bash
+KUBECRSH_API_REPORTS_ENABLED=true
+KUBECRSH_API_TOKEN=your-token
+KUBECRSH_API_ALLOW_FULL=false
+```
+
+Examples:
+
+```bash
+curl -fsS -H "Authorization: Bearer $KUBECRSH_API_TOKEN" "http://127.0.0.1:8080/reports?limit=50&offset=0"
+curl -fsS -H "Authorization: Bearer $KUBECRSH_API_TOKEN" "http://127.0.0.1:8080/reports/<report-id>"
+```
+
+Full report output is gated. To allow it, set `KUBECRSH_API_ALLOW_FULL=true` and request `full=1`:
+
+```bash
+curl -fsS -H "Authorization: Bearer $KUBECRSH_API_TOKEN" "http://127.0.0.1:8080/reports/<report-id>?full=1"
+```
 
 ## Metrics
 

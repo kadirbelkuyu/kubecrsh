@@ -16,8 +16,21 @@ spec:
         app: kubecrsh
     spec:
       serviceAccountName: kubecrsh
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kubecrsh
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           image: docker.io/kadirbelkuyu/kubecrsh:main
           imagePullPolicy: IfNotPresent
           args:
@@ -63,9 +76,11 @@ spec:
             requests:
               memory: "128Mi"
               cpu: "100m"
+              ephemeral-storage: "256Mi"
             limits:
               memory: "512Mi"
               cpu: "500m"
+              ephemeral-storage: "1Gi"
           volumeMounts:
             - name: config
               mountPath: /config
@@ -76,4 +91,5 @@ spec:
           configMap:
             name: kubecrsh-config
         - name: reports
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 1Gi
