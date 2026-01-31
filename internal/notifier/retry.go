@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const maxDrainBytes int64 = 1 << 20
+
 func backoff(attempt int) time.Duration {
 	d := 200 * time.Millisecond
 	for i := 0; i < attempt; i++ {
@@ -22,7 +24,7 @@ func drainAndClose(resp *http.Response) error {
 	if resp == nil || resp.Body == nil {
 		return nil
 	}
-	_, copyErr := io.Copy(io.Discard, resp.Body)
+	_, copyErr := io.Copy(io.Discard, io.LimitReader(resp.Body, maxDrainBytes))
 	closeErr := resp.Body.Close()
 	if copyErr != nil && closeErr != nil {
 		return fmt.Errorf("copy: %v; close: %v", copyErr, closeErr)

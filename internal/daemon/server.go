@@ -152,36 +152,10 @@ func (s *Server) handleCrash(crash domain.PodCrash) {
 		s.redactor.Apply(report)
 	}
 
-	var savedBytes int64
-	if saver, ok := s.store.(reporter.SaveWithResult); ok {
-		res, err := saver.SaveWithResult(report)
-		if err != nil {
-			fmt.Printf("Failed to save report: %v\n", err)
-			report.AddWarning(fmt.Sprintf("save: %v", err))
-		} else {
-			savedBytes = res.BytesWritten
-		}
-	} else {
-		if err := s.store.Save(report); err != nil {
-			fmt.Printf("Failed to save report: %v\n", err)
-			report.AddWarning(fmt.Sprintf("save: %v", err))
-		}
-	}
-
 	s.metrics.CrashesTotal.WithLabelValues(
 		crash.Namespace,
 		crash.Reason,
 	).Inc()
-
-	if savedBytes > 0 {
-		s.metrics.ReportSize.Observe(float64(savedBytes))
-	} else {
-		if data, err := json.Marshal(report); err == nil {
-			s.metrics.ReportSize.Observe(float64(len(data)))
-		} else {
-			fmt.Printf("Failed to measure report size: %v\n", err)
-		}
-	}
 
 	for _, n := range s.notifiers {
 		if err := n.Notify(*report); err != nil {
@@ -199,11 +173,32 @@ func (s *Server) handleCrash(crash domain.PodCrash) {
 		}
 	}
 
-	if len(report.Warnings) > 0 {
+	var savedBytes int64
+	if saver, ok := s.store.(reporter.SaveWithResult); ok {
+		res, err := saver.SaveWithResult(report)
+		if err != nil {
+			fmt.Printf("Failed to save report: %v\n", err)
+		} else {
+			savedBytes = res.BytesWritten
+		}
+	} else {
 		if err := s.store.Save(report); err != nil {
-			fmt.Printf("Failed to update report: %v\n", err)
+			fmt.Printf("Failed to save report: %v\n", err)
 		}
 	}
+
+	if savedBytes > 0 {
+		s.metrics.ReportSize.Observe(float64(savedBytes))
+		return
+	}
+
+	data, err := json.Marshal(report)
+	if err != nil {
+		fmt.Printf("Failed to measure report size: %v\n", err)
+		return
+	}
+
+	s.metrics.ReportSize.Observe(float64(len(data)))
 }
 
 func (s *Server) pruneLoop(ctx context.Context) {

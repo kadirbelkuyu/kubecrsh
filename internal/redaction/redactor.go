@@ -76,9 +76,13 @@ func (r *Redactor) Apply(report *domain.ForensicReport) {
 				continue
 			}
 
-			if len(r.envDenylist) > 0 && matchAny(r.envDenylist, k) {
+			if len(r.envAllowlist) == 0 && len(r.envDenylist) == 0 {
 				report.EnvVars[k] = r.replacement
 				continue
+			}
+
+			if len(r.envDenylist) > 0 && matchAny(r.envDenylist, k) {
+				report.EnvVars[k] = r.replacement
 			}
 		}
 	}
