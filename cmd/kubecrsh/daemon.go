@@ -9,7 +9,9 @@ import (
 
 	"github.com/kadirbelkuyu/kubecrsh/internal/config"
 	"github.com/kadirbelkuyu/kubecrsh/internal/daemon"
+	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	"github.com/kadirbelkuyu/kubecrsh/internal/notifier"
+	"github.com/kadirbelkuyu/kubecrsh/internal/redaction"
 	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
 	"github.com/kadirbelkuyu/kubecrsh/pkg/kubernetes"
 	"github.com/spf13/cobra"
@@ -60,7 +62,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
-	store, err := reporter.NewStore(cfg.Reports.Path)
+	store, err := reporter.NewStore(cfg.Reports.Path, reporter.WithCompression(cfg.Reports.Compression))
 	if err != nil {
 		return fmt.Errorf("failed to create report store: %w", err)
 	}
@@ -79,12 +81,29 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		notifiers = append(notifiers, notifier.NewWebhookNotifier(webhookURL, headers))
 	}
 
+	redactor, err := redaction.New(cfg.Reports.Redaction)
+	if err != nil {
+		return fmt.Errorf("failed to init redaction: %w", err)
+	}
+
+	var redactorCfg interface {
+		Apply(report *domain.ForensicReport)
+	}
+	if redactor != nil {
+		redactorCfg = redactor
+	}
+
 	daemonCfg := daemon.Config{
-		Namespace: cfg.Namespace,
-		Reasons:   cfg.Watch.Reasons,
-		HTTPAddr:  httpAddr,
-		Notifiers: notifiers,
-		Storage:   store,
+		Namespace:         cfg.Namespace,
+		Reasons:           cfg.Watch.Reasons,
+		HTTPAddr:          httpAddr,
+		Notifiers:         notifiers,
+		Storage:           store,
+		APIReportsEnabled: cfg.API.ReportsEnabled,
+		APIToken:          cfg.API.Token,
+		APIAllowFull:      cfg.API.AllowFull,
+		ReportRetention:   cfg.Reports.Retention,
+		Redactor:          redactorCfg,
 	}
 
 	srv := daemon.New(client, daemonCfg)

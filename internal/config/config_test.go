@@ -114,6 +114,28 @@ func TestLoad_EnvironmentVariables(t *testing.T) {
 	}
 }
 
+func TestLoad_EnvironmentVariables_NestedKeys(t *testing.T) {
+	origEnabled := os.Getenv("KUBECRSH_API_REPORTS_ENABLED")
+	origRetention := os.Getenv("KUBECRSH_REPORTS_RETENTION")
+	defer os.Setenv("KUBECRSH_API_REPORTS_ENABLED", origEnabled)
+	defer os.Setenv("KUBECRSH_REPORTS_RETENTION", origRetention)
+
+	os.Setenv("KUBECRSH_API_REPORTS_ENABLED", "true")
+	os.Setenv("KUBECRSH_REPORTS_RETENTION", "72h")
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if cfg.API.ReportsEnabled != true {
+		t.Errorf("API.ReportsEnabled = %v, want true", cfg.API.ReportsEnabled)
+	}
+	if cfg.Reports.Retention != 72*time.Hour {
+		t.Errorf("Reports.Retention = %v, want 72h", cfg.Reports.Retention)
+	}
+}
+
 func TestConfig_EmptyNamespace(t *testing.T) {
 	cfg, err := Load("")
 	if err != nil {

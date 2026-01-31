@@ -20,5 +20,7 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /build/kubecrsh /kubecrsh
 
+USER 65532:65532
+
 ENTRYPOINT ["/kubecrsh"]
 CMD ["daemon"]
