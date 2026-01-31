@@ -10,4 +10,3 @@ type SaveResult struct {
 type SaveWithResult interface {
 	SaveWithResult(report *domain.ForensicReport) (SaveResult, error)
 }
-
