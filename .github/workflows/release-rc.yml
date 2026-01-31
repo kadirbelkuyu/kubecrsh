@@ -19,12 +19,12 @@ jobs:
         runs-on: ubuntu-latest
         if: ${{ contains(github.ref_name, '-rc') }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
               with:
                   fetch-depth: 0
 
             - name: Set up Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
               with:
                   go-version: "1.25.6"
                   check-latest: true
@@ -33,14 +33,14 @@ jobs:
               run: go test ./...
 
             - name: Log in to GHCR
-              uses: docker/login-action@v3
+              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Run GoReleaser
-              uses: goreleaser/goreleaser-action@v6
+              uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a
               with:
                   distribution: goreleaser
                   version: latest
@@ -49,7 +49,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Upload manifests
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
               with:
                   files: manifests/*.yaml
                   generate_release_notes: true

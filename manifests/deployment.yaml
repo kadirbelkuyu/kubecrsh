@@ -16,11 +16,16 @@ spec:
         app: kubecrsh
     spec:
       serviceAccountName: kubecrsh
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kubecrsh
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
             allowPrivilegeEscalation: false
             capabilities:
               drop:
