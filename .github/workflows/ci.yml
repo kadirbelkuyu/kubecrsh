@@ -14,12 +14,12 @@ jobs:
             contents: read
             pull-requests: write
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
               with:
                   fetch-depth: 0
 
             - name: Set up Go
-              uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
               with:
                   go-version: "1.25.6"
                   check-latest: true
@@ -34,7 +34,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             - name: Upload coverage
-              uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238
+              uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
               with:
                   file: ./coverage.out
                   flags: unittests
@@ -46,10 +46,10 @@ jobs:
         permissions:
             contents: read
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go
-              uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
               with:
                   go-version: "1.25.6"
                   check-latest: true
@@ -61,7 +61,7 @@ jobs:
                   ./bin/kubecrsh --help
 
             - name: Upload artifact
-              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
               with:
                   name: kubecrsh-binary
                   path: bin/kubecrsh
