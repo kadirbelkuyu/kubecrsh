@@ -26,14 +26,18 @@ Continuously watches for pod crashes and sends notifications.`,
 }
 
 var (
-	slackWebhook string
-	webhookURL   string
-	webhookToken string
-	httpAddr     string
+	slackWebhook   string
+	telegramToken  string
+	telegramChatId string
+	webhookURL     string
+	webhookToken   string
+	httpAddr       string
 )
 
 func init() {
 	daemonCmd.Flags().StringVar(&slackWebhook, "slack-webhook", "", "Slack webhook URL")
+	daemonCmd.Flags().StringVar(&telegramToken, "telegram-token", "", "Telegram token URL")
+	daemonCmd.Flags().StringVar(&telegramChatId, "telegram-chat-id", "", "Telegram chat ID")
 	daemonCmd.Flags().StringVar(&webhookURL, "webhook-url", "", "Generic webhook URL")
 	daemonCmd.Flags().StringVar(&webhookToken, "webhook-token", "", "Webhook authorization token")
 	daemonCmd.Flags().StringVar(&httpAddr, "http-addr", ":8080", "HTTP server address for metrics and health")
@@ -71,6 +75,10 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 
 	if slackWebhook != "" {
 		notifiers = append(notifiers, notifier.NewSlackNotifier(slackWebhook, ""))
+	}
+
+	if telegramToken != "" && telegramChatId != "" {
+		notifiers = append(notifiers, notifier.NewTelegramNotifier(nil, telegramToken, telegramChatId))
 	}
 
 	if webhookURL != "" {
