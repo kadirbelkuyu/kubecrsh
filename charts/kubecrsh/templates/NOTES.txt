@@ -1,0 +1,47 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ include "kubecrsh.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "kubecrsh.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ include "kubecrsh.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch its status by running 'kubectl get --namespace {{ include "kubecrsh.namespace" . }} svc -w {{ include "kubecrsh.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ include "kubecrsh.namespace" . }} {{ include "kubecrsh.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  kubectl --namespace {{ include "kubecrsh.namespace" . }} port-forward svc/{{ include "kubecrsh.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "Visit http://127.0.0.1:8080 to use your application"
+{{- end }}
+
+2. Check the pod forensic reports:
+  {{- if .Values.config.api.reportsEnabled }}
+  curl http://127.0.0.1:8080/api/reports
+  {{- else }}
+  API reports are disabled. Enable with: config.api.reportsEnabled=true
+  {{- end }}
+
+3. View health status:
+  curl http://127.0.0.1:8080/health
+  curl http://127.0.0.1:8080/ready
+
+4. View metrics:
+  curl http://127.0.0.1:8080/metrics
+
+{{- if .Values.rbac.clusterWide }}
+NOTE: kubecrsh is configured to watch ALL namespaces.
+{{- else }}
+NOTE: kubecrsh is configured to watch namespace: {{ include "kubecrsh.namespace" . }}
+{{- end }}
+
+{{- if .Values.notifiers.slack.enabled }}
+Slack notifications: ENABLED
+{{- end }}
+{{- if .Values.notifiers.webhook.enabled }}
+Webhook notifications: ENABLED
+{{- end }}

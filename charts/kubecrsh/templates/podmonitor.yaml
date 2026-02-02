@@ -1,0 +1,28 @@
+{{- if and .Values.metrics.enabled .Values.metrics.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "kubecrsh.fullname" . }}
+  {{- if .Values.metrics.podMonitor.namespace }}
+  namespace: {{ .Values.metrics.podMonitor.namespace }}
+  {{- else }}
+  namespace: {{ include "kubecrsh.namespace" . }}
+  {{- end }}
+  labels:
+    {{- include "kubecrsh.labels" . | nindent 4 }}
+    {{- with .Values.metrics.podMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.podMonitor.interval }}
+      scrapeTimeout: {{ .Values.metrics.podMonitor.scrapeTimeout }}
+  namespaceSelector:
+    matchNames:
+      - {{ include "kubecrsh.namespace" . }}
+  selector:
+    matchLabels:
+      {{- include "kubecrsh.selectorLabels" . | nindent 6 }}
+{{- end }}

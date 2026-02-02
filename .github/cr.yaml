@@ -1,0 +1,4 @@
+owner: kadirbelkuyu
+git-repo-url: https://github.com/kadirbelkuyu/kubecrsh
+pages-branch: gh-pages
+release-name-template: "helm-{{ .Name }}-{{ .Version }}"
