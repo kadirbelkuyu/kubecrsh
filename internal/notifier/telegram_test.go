@@ -2,62 +2,54 @@ package notifier
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 )
 
-var (
-	webHookURL = "#tests"
-	token      = "bot_id:token"
-	chatId     = "chat_id"
+const (
+	testTelegramToken  = "123:ABC"
+	testTelegramChatID = "chat_id"
 )
 
-func init() {
-
-}
-
 func TestTelegramNotifier_Name(t *testing.T) {
-	notifier := NewTelegramNotifier(&webHookURL, "#alerts", "")
+	baseURL := "http://example.com"
+	notifier := NewTelegramNotifier(&baseURL, testTelegramToken, testTelegramChatID)
 
 	if name := notifier.Name(); name != "telegram" {
-		t.Errorf("Name() = %v, want slack", name)
-	}
-}
-
-func TestTelegramNotifier_colorForReason(t *testing.T) {
-	notifier := NewTelegramNotifier(&webHookURL, "", "")
-
-	tests := []struct {
-		reason string
-		want   string
-	}{
-		{"OOMKilled", "danger"},
-		{"CrashLoopBackOff", "warning"},
-		{"Error", "#ff9500"},
-		{"Unknown", "#ff9500"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.reason, func(t *testing.T) {
-			if got := notifier.colorForReason(tt.reason); got != tt.want {
-				t.Errorf("colorForReason(%s) = %v, want %v", tt.reason, got, tt.want)
-			}
-		})
+		t.Errorf("Name() = %v, want telegram", name)
 	}
 }
 
 func TestTelegramNotifier_Notify_Success(t *testing.T) {
+	var receivedPath string
+	var receivedContentType string
+	var received telegramSendMessageRequest
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		receivedContentType = r.Header.Get("Content-Type")
+
+		if r.Method != http.MethodPost {
+			t.Fatalf("Method = %s, want POST", r.Method)
+		}
+
+		decErr := json.NewDecoder(r.Body).Decode(&received)
+		_ = r.Body.Close()
+		if decErr != nil {
+			t.Fatalf("Failed to decode request body: %v", decErr)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer server.Close()
 
-	notifier := NewTelegramNotifier(&server.URL, token, chatId)
+	notifier := NewTelegramNotifier(&server.URL, testTelegramToken, testTelegramChatID)
 
 	crash := domain.PodCrash{
 		Namespace:     "production",
@@ -69,30 +61,52 @@ func TestTelegramNotifier_Notify_Success(t *testing.T) {
 	}
 	report := *domain.NewForensicReport(crash)
 
-	err := notifier.Notify(report)
-	if err != nil {
+	if err := notifier.Notify(report); err != nil {
 		t.Fatalf("Notify() error = %v", err)
 	}
 
+	wantPath := "/bot" + testTelegramToken + "/sendMessage"
+	if receivedPath != wantPath {
+		t.Fatalf("Path = %s, want %s", receivedPath, wantPath)
+	}
+
+	if receivedContentType != "application/json" {
+		t.Fatalf("Content-Type = %s, want application/json", receivedContentType)
+	}
+
+	if received.ChatID != testTelegramChatID {
+		t.Fatalf("chat_id = %s, want %s", received.ChatID, testTelegramChatID)
+	}
+
+	if !strings.Contains(received.Text, report.ID) {
+		t.Fatalf("text does not contain report ID")
+	}
 }
 
 func TestTelegramNotifier_Notify_ServerError(t *testing.T) {
+	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
 		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"ok":false,"description":"server error"}`))
 	}))
 	defer server.Close()
 
-	notifier := NewTelegramNotifier(&webHookURL, "", "")
+	notifier := NewTelegramNotifier(&server.URL, testTelegramToken, testTelegramChatID)
 	report := *domain.NewForensicReport(domain.PodCrash{})
 
 	err := notifier.Notify(report)
 	if err == nil {
 		t.Error("Expected error for server error response")
 	}
+	if requests < 1 {
+		t.Fatalf("Expected at least 1 request, got %d", requests)
+	}
 }
 
 func TestTelegramNotifier_Notify_ConnectionError(t *testing.T) {
-	notifier := NewTelegramNotifier(&webHookURL, "", "")
+	baseURL := "http://127.0.0.1:1"
+	notifier := NewTelegramNotifier(&baseURL, testTelegramToken, testTelegramChatID)
 	report := *domain.NewForensicReport(domain.PodCrash{})
 
 	err := notifier.Notify(report)
@@ -105,35 +119,15 @@ func TestTelegramNotifier_ImplementsNotifierInterface(t *testing.T) {
 	var _ Notifier = (*TelegramNotifier)(nil)
 }
 
-func TestTelegramNotifier_EmptyChannel(t *testing.T) {
-	var receivedBody []byte
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedBody, _ = io.ReadAll(r.Body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	notifier := NewTelegramNotifier(&webHookURL, "", "")
-	report := *domain.NewForensicReport(domain.PodCrash{})
-
-	notifier.Notify(report)
-
-	var msg slackMessage
-	json.Unmarshal(receivedBody, &msg)
-
-	if msg.Channel != "" {
-		t.Errorf("Channel should be empty when not set, got: %s", msg.Channel)
-	}
-}
-
 func BenchmarkTelegramNotifier_Notify(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer server.Close()
 
-	notifier := NewTelegramNotifier(&webHookURL, "#alerts", "")
+	notifier := NewTelegramNotifier(&server.URL, testTelegramToken, testTelegramChatID)
 	report := *domain.NewForensicReport(domain.PodCrash{
 		Namespace: "default",
 		PodName:   "test-pod",
