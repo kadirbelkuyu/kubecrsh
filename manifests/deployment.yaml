@@ -37,6 +37,8 @@ spec:
             - daemon
             - --config=/config/config.yaml
             - --slack-webhook=$(SLACK_WEBHOOK)
+            - --telegram-token=$(TELEGRAM_TOKEN)
+            - --telegram-chat-id=$(TELEGRAM_CHAT_ID)
             - --http-addr=:8080
           env:
             - name: SLACK_WEBHOOK
@@ -44,6 +46,18 @@ spec:
                 secretKeyRef:
                   name: kubecrsh-secrets
                   key: slack-webhook
+                  optional: true
+            - name: TELEGRAM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: kubecrsh-secrets
+                  key: telegram-token
+                  optional: true
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kubecrsh-secrets
+                  key: telegram-chat-id
                   optional: true
             - name: WEBHOOK_URL
               valueFrom:
