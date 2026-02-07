@@ -57,6 +57,24 @@ spec:
                   name: kubecrsh-secrets
                   key: webhook-token
                   optional: true
+            - name: KUBECRSH_ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kubecrsh-secrets
+                  key: elasticsearch-username
+                  optional: true
+            - name: KUBECRSH_ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kubecrsh-secrets
+                  key: elasticsearch-password
+                  optional: true
+            - name: KUBECRSH_ELASTICSEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubecrsh-secrets
+                  key: elasticsearch-api-key
+                  optional: true
           ports:
             - name: http
               containerPort: 8080

@@ -114,6 +114,12 @@ config:
     reportsEnabled: false
     token: ""
     allowFull: false
+  elasticsearch:
+    enabled: false
+    addresses:
+      - http://elasticsearch:9200
+    index: kubecrsh-reports
+    cloudId: ""
 
 daemon:
   httpAddr: ":8080"
@@ -132,6 +138,9 @@ secrets:
   slackWebhook: ""
   webhookUrl: ""
   webhookToken: ""
+  elasticsearchUsername: ""
+  elasticsearchPassword: ""
+  elasticsearchApiKey: ""
   existingSecret: ""
 
 notifiers:

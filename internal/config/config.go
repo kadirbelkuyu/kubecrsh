@@ -11,12 +11,13 @@ import (
 )
 
 type Config struct {
-	Kubeconfig string
-	Context    string
-	Namespace  string
-	Reports    ReportsConfig
-	API        APIConfig
-	Watch      WatchConfig
+	Kubeconfig    string
+	Context       string
+	Namespace     string
+	Reports       ReportsConfig
+	API           APIConfig
+	Watch         WatchConfig
+	Elasticsearch ElasticsearchConfig
 }
 
 type ReportsConfig struct {
@@ -43,6 +44,16 @@ type APIConfig struct {
 
 type WatchConfig struct {
 	Reasons []string
+}
+
+type ElasticsearchConfig struct {
+	Enabled   bool     `mapstructure:"enabled"`
+	Addresses []string `mapstructure:"addresses"`
+	Username  string   `mapstructure:"username"`
+	Password  string   `mapstructure:"password"`
+	Index     string   `mapstructure:"index"`
+	CloudID   string   `mapstructure:"cloud_id"`
+	APIKey    string   `mapstructure:"api_key"`
 }
 
 func Load(cfgFile string) (*Config, error) {
@@ -78,6 +89,13 @@ func Load(cfgFile string) (*Config, error) {
 	v.SetDefault("api.token", "")
 	v.SetDefault("api.allow_full", false)
 	v.SetDefault("watch.reasons", []string{"OOMKilled", "Error", "CrashLoopBackOff"})
+	v.SetDefault("elasticsearch.enabled", false)
+	v.SetDefault("elasticsearch.addresses", []string{"http://localhost:9200"})
+	v.SetDefault("elasticsearch.username", "")
+	v.SetDefault("elasticsearch.password", "")
+	v.SetDefault("elasticsearch.index", "kubecrsh-reports")
+	v.SetDefault("elasticsearch.cloud_id", "")
+	v.SetDefault("elasticsearch.api_key", "")
 
 	v.AutomaticEnv()
 	v.SetEnvPrefix("KUBECRSH")
