@@ -1,0 +1,19 @@
+{{- if .Values.rbac.create }}
+{{- if not .Values.rbac.clusterWide }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "kubecrsh.fullname" . }}
+  namespace: {{ include "kubecrsh.namespace" . }}
+  labels:
+    {{- include "kubecrsh.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "kubecrsh.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kubecrsh.serviceAccountName" . }}
+    namespace: {{ include "kubecrsh.namespace" . }}
+{{- end }}
+{{- end }}

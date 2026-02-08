@@ -1,0 +1,55 @@
+apiVersion: v2
+name: kubecrsh
+description: Kubernetes Pod Crash Forensic Analyzer - Real-time crash detection with detailed diagnostics
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.23.0-0"
+home: https://github.com/kadirbelkuyu/kubecrsh
+icon: https://raw.githubusercontent.com/kadirbelkuyu/kubecrsh/main/docs/icon.png
+sources:
+  - https://github.com/kadirbelkuyu/kubecrsh
+maintainers:
+  - name: kadirbelkuyu
+    url: https://github.com/kadirbelkuyu
+keywords:
+  - kubernetes
+  - forensics
+  - crash-analysis
+  - pod-monitoring
+  - debugging
+  - observability
+  - crashloopbackoff
+  - oomkilled
+  - logs
+  - events
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: monitoring-logging
+  artifacthub.io/operator: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/signKey: |
+    fingerprint: ""
+    url: ""
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial Helm chart release
+    - kind: added
+      description: Cluster-wide and namespace-scoped RBAC modes
+    - kind: added
+      description: ServiceMonitor and PodMonitor support
+    - kind: added
+      description: Production values preset with HA configuration
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/kadirbelkuyu/kubecrsh#readme
+    - name: Source
+      url: https://github.com/kadirbelkuyu/kubecrsh
+    - name: Issues
+      url: https://github.com/kadirbelkuyu/kubecrsh/issues
+  artifacthub.io/maintainers: |
+    - name: kadirbelkuyu
+      email: kadirbelkuyu@users.noreply.github.com
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack

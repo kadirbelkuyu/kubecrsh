@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kubecrsh.configMapName" . }}
+  namespace: {{ include "kubecrsh.namespace" . }}
+  labels:
+    {{- include "kubecrsh.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    namespace: {{ include "kubecrsh.watchNamespace" . }}
+    reports:
+      path: {{ .Values.config.reports.path }}
+      retention: {{ .Values.config.reports.retention }}
+      compression: {{ .Values.config.reports.compression }}
+      {{- if .Values.config.reports.redaction.enabled }}
+      redaction:
+        enabled: {{ .Values.config.reports.redaction.enabled }}
+        {{- if .Values.config.reports.redaction.envAllowlist }}
+        env_allowlist:
+          {{- range .Values.config.reports.redaction.envAllowlist }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.config.reports.redaction.envDenylist }}
+        env_denylist:
+          {{- range .Values.config.reports.redaction.envDenylist }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.config.reports.redaction.logPatterns }}
+        log_patterns:
+          {{- range .Values.config.reports.redaction.logPatterns }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- end }}
+        replacement: {{ .Values.config.reports.redaction.replacement | quote }}
+        redact_from_source: {{ .Values.config.reports.redaction.redactFromSource }}
+      {{- end }}
+    watch:
+      reasons:
+        {{- range .Values.config.watch.reasons }}
+        - {{ . }}
+        {{- end }}
+    api:
+      reports_enabled: {{ .Values.config.api.reportsEnabled }}
+      allow_full: {{ .Values.config.api.allowFull }}
+      {{- if .Values.config.api.token }}
+      token: {{ .Values.config.api.token | quote }}
+      {{- end }}

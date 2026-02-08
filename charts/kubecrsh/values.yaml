@@ -1,0 +1,204 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/kadirbelkuyu/kubecrsh
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+global:
+  createNamespace: true
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+  clusterWide: false
+  watchNamespaces: []
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: kubecrsh.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+    ephemeral-storage: "256Mi"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+    ephemeral-storage: "1Gi"
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+topologySpreadConstraints: []
+
+config:
+  namespace: ""
+  reports:
+    path: /data/reports
+    retention: 168h
+    compression: none
+    redaction:
+      enabled: false
+      envAllowlist: []
+      envDenylist:
+        - PASSWORD
+        - SECRET
+        - TOKEN
+        - API_KEY
+        - PRIVATE_KEY
+      logPatterns: []
+      replacement: "***"
+      redactFromSource: false
+  watch:
+    reasons:
+      - OOMKilled
+      - Error
+      - CrashLoopBackOff
+      - ContainerStatusUnknown
+  api:
+    reportsEnabled: false
+    token: ""
+    allowFull: false
+  elasticsearch:
+    enabled: false
+    addresses:
+      - http://elasticsearch:9200
+    index: kubecrsh-reports
+    cloudId: ""
+
+daemon:
+  httpAddr: ":8080"
+  extraArgs: []
+
+persistence:
+  enabled: false
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+  existingClaim: ""
+
+secrets:
+  create: true
+  slackWebhook: ""
+  webhookUrl: ""
+  webhookToken: ""
+  elasticsearchUsername: ""
+  elasticsearchPassword: ""
+  elasticsearchApiKey: ""
+  existingSecret: ""
+
+notifiers:
+  slack:
+    enabled: false
+  webhook:
+    enabled: false
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  readiness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+    honorLabels: false
+    relabelings: []
+    metricRelabelings: []
+  podMonitor:
+    enabled: false
+    namespace: ""
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+extraEnv: []
+
+extraVolumes: []
+
+extraVolumeMounts: []
+
+extraContainers: []
+
+initContainers: []
+
+priorityClassName: ""
+
+terminationGracePeriodSeconds: 30
+
+dnsPolicy: ClusterFirst
+
+dnsConfig: {}
+
+hostNetwork: false
