@@ -1,0 +1,99 @@
+replicaCount: 2
+
+image:
+  pullPolicy: Always
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "200m"
+    ephemeral-storage: "512Mi"
+  limits:
+    memory: "1Gi"
+    cpu: "1"
+    ephemeral-storage: "2Gi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+rbac:
+  clusterWide: true
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+
+config:
+  reports:
+    retention: 720h
+    compression: gzip
+    redaction:
+      enabled: true
+      envDenylist:
+        - PASSWORD
+        - SECRET
+        - TOKEN
+        - API_KEY
+        - PRIVATE_KEY
+        - BEARER
+        - CREDENTIAL
+        - ACCESS_KEY
+        - SECRET_KEY
+      replacement: "[REDACTED]"
+  watch:
+    reasons:
+      - OOMKilled
+      - Error
+      - CrashLoopBackOff
+      - ContainerStatusUnknown
+      - Evicted
+
+probes:
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    failureThreshold: 5
+  readiness:
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 5
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+
+notifiers:
+  slack:
+    enabled: true
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: kubecrsh
+          topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: kubecrsh
+
+terminationGracePeriodSeconds: 60

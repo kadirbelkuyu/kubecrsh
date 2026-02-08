@@ -48,8 +48,29 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Upload manifests
-              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # softprops/action-gh-release@v2
+            - name: Set up Helm
+              uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
               with:
-                  files: manifests/*.yaml
+                  version: v3.14.0
+
+            - name: Update Chart Version
+              run: |
+                  VERSION=${GITHUB_REF_NAME#v}
+                  sed -i "s/^version:.*/version: ${VERSION}/" charts/kubecrsh/Chart.yaml
+                  sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" charts/kubecrsh/Chart.yaml
+
+            - name: Lint Helm Chart
+              run: helm lint charts/kubecrsh
+
+            - name: Package Helm Chart
+              run: |
+                  helm package charts/kubecrsh -d dist/
+                  ls -la dist/
+
+            - name: Upload manifests and Helm chart
+              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+              with:
+                  files: |
+                      manifests/*.yaml
+                      dist/*.tgz
                   generate_release_notes: true

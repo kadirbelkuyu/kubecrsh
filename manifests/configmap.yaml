@@ -14,3 +14,8 @@ data:
         - OOMKilled
         - Error
         - CrashLoopBackOff
+    elasticsearch:
+      enabled: false
+      addresses:
+        - http://elasticsearch:9200
+      index: kubecrsh-reports

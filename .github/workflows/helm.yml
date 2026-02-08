@@ -1,0 +1,111 @@
+name: Helm Chart CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+    paths:
+      - "charts/**"
+      - ".github/workflows/helm.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
+        with:
+          version: v3.14.0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install chart-testing
+        uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b
+
+      - name: Lint chart
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }} --charts charts/kubecrsh
+
+  template:
+    name: Template Validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        values:
+          - default
+          - production
+          - cluster-wide
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
+        with:
+          version: v3.14.0
+
+      - name: Template with default values
+        if: matrix.values == 'default'
+        run: helm template kubecrsh charts/kubecrsh --debug
+
+      - name: Template with production values
+        if: matrix.values == 'production'
+        run: helm template kubecrsh charts/kubecrsh -f charts/kubecrsh/values-production.yaml --debug
+
+      - name: Template with cluster-wide RBAC
+        if: matrix.values == 'cluster-wide'
+        run: |
+          helm template kubecrsh charts/kubecrsh \
+            --set rbac.clusterWide=true \
+            --set notifiers.slack.enabled=true \
+            --set secrets.slackWebhook="test" \
+            --debug
+
+  kubeconform:
+    name: Kubernetes Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
+        with:
+          version: v3.14.0
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.4/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate templates
+        run: |
+          helm template kubecrsh charts/kubecrsh | kubeconform -strict -summary -output json
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Check README exists
+        run: test -f charts/kubecrsh/README.md
+
+      - name: Check Chart.yaml
+        run: |
+          helm show chart charts/kubecrsh
+          helm show values charts/kubecrsh

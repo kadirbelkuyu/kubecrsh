@@ -71,6 +71,27 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create report store: %w", err)
 	}
 
+	var storage reporter.Storage = store
+
+	if cfg.Elasticsearch.Enabled {
+		esCfg := reporter.ElasticConfig{
+			Addresses: cfg.Elasticsearch.Addresses,
+			Username:  cfg.Elasticsearch.Username,
+			Password:  cfg.Elasticsearch.Password,
+			CloudID:   cfg.Elasticsearch.CloudID,
+			APIKey:    cfg.Elasticsearch.APIKey,
+			Index:     cfg.Elasticsearch.Index,
+		}
+
+		esStore, err := reporter.NewElasticStore(esCfg)
+		if err != nil {
+			return fmt.Errorf("failed to create elasticsearch store: %w", err)
+		}
+
+		storage = reporter.NewMultiStore(store, esStore)
+		fmt.Printf("Elasticsearch storage enabled: %v\n", cfg.Elasticsearch.Addresses)
+	}
+
 	var notifiers []notifier.Notifier
 
 	if slackWebhook != "" {
@@ -106,7 +127,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		Reasons:           cfg.Watch.Reasons,
 		HTTPAddr:          httpAddr,
 		Notifiers:         notifiers,
-		Storage:           store,
+		Storage:           storage,
 		APIReportsEnabled: cfg.API.ReportsEnabled,
 		APIToken:          cfg.API.Token,
 		APIAllowFull:      cfg.API.AllowFull,
