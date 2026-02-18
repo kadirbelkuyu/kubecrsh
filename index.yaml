@@ -4,6 +4,59 @@ entries:
   - annotations:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Add project logo and fix Artifact Hub icon URL
+        - kind: fixed
+          description: Remove invalid signKey annotation causing indexing failure
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/kadirbelkuyu/kubecrsh#readme
+        - name: Source
+          url: https://github.com/kadirbelkuyu/kubecrsh
+        - name: Issues
+          url: https://github.com/kadirbelkuyu/kubecrsh/issues
+      artifacthub.io/maintainers: |
+        - name: kadirbelkuyu
+          email: kadirbelkuyu@users.noreply.github.com
+      artifacthub.io/operator: "false"
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+    apiVersion: v2
+    appVersion: 0.1.1
+    created: "2026-02-18T08:32:38.62975277Z"
+    description: Kubernetes Pod Crash Forensic Analyzer - Real-time crash detection
+      with detailed diagnostics
+    digest: e2e5875c29f60777659506a23b1ffa54cc9e33d0841769797cea1d9b4fc418a4
+    home: https://github.com/kadirbelkuyu/kubecrsh
+    icon: https://raw.githubusercontent.com/kadirbelkuyu/kubecrsh/main/docs/icon.png
+    keywords:
+    - kubernetes
+    - forensics
+    - crash-analysis
+    - pod-monitoring
+    - debugging
+    - observability
+    - crashloopbackoff
+    - oomkilled
+    - logs
+    - events
+    kubeVersion: '>=1.23.0-0'
+    maintainers:
+    - name: kadirbelkuyu
+      url: https://github.com/kadirbelkuyu
+    name: kubecrsh
+    sources:
+    - https://github.com/kadirbelkuyu/kubecrsh
+    type: application
+    urls:
+    - https://github.com/kadirbelkuyu/kubecrsh/releases/download/kubecrsh-0.1.2/kubecrsh-0.1.2.tgz
+    version: 0.1.2
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
         - kind: changed
           description: Bump appVersion to 0.1.1
         - kind: added
@@ -61,4 +114,4 @@ entries:
     urls:
     - https://github.com/kadirbelkuyu/kubecrsh/releases/download/kubecrsh-0.1.1/kubecrsh-0.1.1.tgz
     version: 0.1.1
-generated: "2026-02-18T07:03:00.875239442Z"
+generated: "2026-02-18T08:32:38.629762248Z"
