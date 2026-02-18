@@ -5,6 +5,64 @@ entries:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/changes: |
         - kind: fixed
+          description: Fix Artifact Hub image scanning by specifying correct GHCR image tag
+        - kind: fixed
+          description: Remove signKey annotation that caused indexing failures
+        - kind: added
+          description: Project logo added
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: kubecrsh
+          image: ghcr.io/kadirbelkuyu/kubecrsh:v0.1.1
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/kadirbelkuyu/kubecrsh#readme
+        - name: Source
+          url: https://github.com/kadirbelkuyu/kubecrsh
+        - name: Issues
+          url: https://github.com/kadirbelkuyu/kubecrsh/issues
+      artifacthub.io/maintainers: |
+        - name: kadirbelkuyu
+          email: kadirbelkuyu@users.noreply.github.com
+      artifacthub.io/operator: "false"
+      artifacthub.io/prerelease: "false"
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+    apiVersion: v2
+    appVersion: 0.1.1
+    created: "2026-02-18T10:41:47.179470514Z"
+    description: Kubernetes Pod Crash Forensic Analyzer - Real-time crash detection
+      with detailed diagnostics
+    digest: b8491638eb047bc44fb375e5f6e4e400e9b517b09c0c7899874f4702d9f606cd
+    home: https://github.com/kadirbelkuyu/kubecrsh
+    icon: https://raw.githubusercontent.com/kadirbelkuyu/kubecrsh/main/docs/icon.png
+    keywords:
+    - kubernetes
+    - forensics
+    - crash-analysis
+    - pod-monitoring
+    - debugging
+    - observability
+    - crashloopbackoff
+    - oomkilled
+    - logs
+    - events
+    kubeVersion: '>=1.23.0-0'
+    maintainers:
+    - name: kadirbelkuyu
+      url: https://github.com/kadirbelkuyu
+    name: kubecrsh
+    sources:
+    - https://github.com/kadirbelkuyu/kubecrsh
+    type: application
+    urls:
+    - https://github.com/kadirbelkuyu/kubecrsh/releases/download/kubecrsh-0.1.3/kubecrsh-0.1.3.tgz
+    version: 0.1.3
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: fixed
           description: Add project logo and fix Artifact Hub icon URL
         - kind: fixed
           description: Remove invalid signKey annotation causing indexing failure
@@ -114,4 +172,4 @@ entries:
     urls:
     - https://github.com/kadirbelkuyu/kubecrsh/releases/download/kubecrsh-0.1.1/kubecrsh-0.1.1.tgz
     version: 0.1.1
-generated: "2026-02-18T08:32:38.629762248Z"
+generated: "2026-02-18T10:41:47.179482617Z"
