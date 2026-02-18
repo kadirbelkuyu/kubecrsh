@@ -28,6 +28,19 @@ jobs:
                   git config user.name "$GITHUB_ACTOR"
                   git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
+            - name: Initialize gh-pages branch
+              run: |
+                  if ! git ls-remote --exit-code --heads origin gh-pages; then
+                    git checkout --orphan gh-pages
+                    git rm -rf .
+                    mkdir -p .
+                    echo '{"apiVersion": "v1", "entries": {}}' > index.yaml
+                    git add index.yaml
+                    git commit -m "chore: initialize gh-pages for Helm chart repository"
+                    git push origin gh-pages
+                    git checkout main
+                  fi
+
             - name: Set up Helm
               uses: azure/setup-helm@v4
               with:
