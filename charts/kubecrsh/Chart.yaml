@@ -2,8 +2,8 @@ apiVersion: v2
 name: kubecrsh
 description: Kubernetes Pod Crash Forensic Analyzer - Real-time crash detection with detailed diagnostics
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.1.1
+appVersion: "0.1.1"
 kubeVersion: ">=1.23.0-0"
 home: https://github.com/kadirbelkuyu/kubecrsh
 icon: https://raw.githubusercontent.com/kadirbelkuyu/kubecrsh/main/docs/icon.png
@@ -33,8 +33,8 @@ annotations:
     fingerprint: ""
     url: ""
   artifacthub.io/changes: |
-    - kind: added
-      description: Initial Helm chart release
+    - kind: changed
+      description: Bump appVersion to 0.1.1
     - kind: added
       description: Cluster-wide and namespace-scoped RBAC modes
     - kind: added
