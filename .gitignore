@@ -13,7 +13,7 @@ coverage.html
 debug.log
 secret.yaml
 manifests/secret.yaml
-docs/
+
 .env
 .env.*
 !.env.example
