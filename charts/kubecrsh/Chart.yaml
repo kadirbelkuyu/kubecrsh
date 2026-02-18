@@ -2,7 +2,7 @@ apiVersion: v2
 name: kubecrsh
 description: Kubernetes Pod Crash Forensic Analyzer - Real-time crash detection with detailed diagnostics
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.1.1"
 kubeVersion: ">=1.23.0-0"
 home: https://github.com/kadirbelkuyu/kubecrsh
@@ -29,18 +29,12 @@ annotations:
   artifacthub.io/operator: "false"
   artifacthub.io/prerelease: "false"
   artifacthub.io/containsSecurityUpdates: "false"
-  artifacthub.io/signKey: |
-    fingerprint: ""
-    url: ""
+
   artifacthub.io/changes: |
-    - kind: changed
-      description: Bump appVersion to 0.1.1
-    - kind: added
-      description: Cluster-wide and namespace-scoped RBAC modes
-    - kind: added
-      description: ServiceMonitor and PodMonitor support
-    - kind: added
-      description: Production values preset with HA configuration
+    - kind: fixed
+      description: Add project logo and fix Artifact Hub icon URL
+    - kind: fixed
+      description: Remove invalid signKey annotation causing indexing failure
   artifacthub.io/links: |
     - name: Documentation
       url: https://github.com/kadirbelkuyu/kubecrsh#readme
