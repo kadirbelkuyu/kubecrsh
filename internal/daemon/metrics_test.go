@@ -21,6 +21,33 @@ func TestNewMetrics(t *testing.T) {
 	if metrics.NotificationsSent == nil {
 		t.Error("NotificationsSent should not be nil")
 	}
+	if metrics.CollectDuration == nil {
+		t.Error("CollectDuration should not be nil")
+	}
+	if metrics.SaveDuration == nil {
+		t.Error("SaveDuration should not be nil")
+	}
+	if metrics.ProcessDuration == nil {
+		t.Error("ProcessDuration should not be nil")
+	}
+	if metrics.NotifyDuration == nil {
+		t.Error("NotifyDuration should not be nil")
+	}
+	if metrics.CrashQueueDepth == nil {
+		t.Error("CrashQueueDepth should not be nil")
+	}
+	if metrics.NotifyQueueDepth == nil {
+		t.Error("NotifyQueueDepth should not be nil")
+	}
+	if metrics.QueueDropped == nil {
+		t.Error("QueueDropped should not be nil")
+	}
+	if metrics.CrashQueueWait == nil {
+		t.Error("CrashQueueWait should not be nil")
+	}
+	if metrics.NotifyQueueWait == nil {
+		t.Error("NotifyQueueWait should not be nil")
+	}
 }
 
 func TestMetrics_CrashesTotal(t *testing.T) {

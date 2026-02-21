@@ -17,6 +17,7 @@ type Config struct {
 	Reports       ReportsConfig
 	API           APIConfig
 	Watch         WatchConfig
+	Performance   PerformanceConfig
 	Elasticsearch ElasticsearchConfig
 }
 
@@ -44,6 +45,13 @@ type APIConfig struct {
 
 type WatchConfig struct {
 	Reasons []string
+}
+
+type PerformanceConfig struct {
+	CrashWorkers      int `mapstructure:"crash_workers"`
+	CrashQueueSize    int `mapstructure:"crash_queue_size"`
+	NotifierWorkers   int `mapstructure:"notifier_workers"`
+	NotifierQueueSize int `mapstructure:"notifier_queue_size"`
 }
 
 type ElasticsearchConfig struct {
@@ -89,6 +97,10 @@ func Load(cfgFile string) (*Config, error) {
 	v.SetDefault("api.token", "")
 	v.SetDefault("api.allow_full", false)
 	v.SetDefault("watch.reasons", []string{"OOMKilled", "Error", "CrashLoopBackOff"})
+	v.SetDefault("performance.crash_workers", 4)
+	v.SetDefault("performance.crash_queue_size", 512)
+	v.SetDefault("performance.notifier_workers", 4)
+	v.SetDefault("performance.notifier_queue_size", 1024)
 	v.SetDefault("elasticsearch.enabled", false)
 	v.SetDefault("elasticsearch.addresses", []string{"http://localhost:9200"})
 	v.SetDefault("elasticsearch.username", "")

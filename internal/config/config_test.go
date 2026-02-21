@@ -19,6 +19,18 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Reports.Retention != 168*time.Hour {
 		t.Errorf("Reports.Retention = %v, want 168h", cfg.Reports.Retention)
 	}
+	if cfg.Performance.CrashWorkers != 4 {
+		t.Errorf("Performance.CrashWorkers = %d, want 4", cfg.Performance.CrashWorkers)
+	}
+	if cfg.Performance.CrashQueueSize != 512 {
+		t.Errorf("Performance.CrashQueueSize = %d, want 512", cfg.Performance.CrashQueueSize)
+	}
+	if cfg.Performance.NotifierWorkers != 4 {
+		t.Errorf("Performance.NotifierWorkers = %d, want 4", cfg.Performance.NotifierWorkers)
+	}
+	if cfg.Performance.NotifierQueueSize != 1024 {
+		t.Errorf("Performance.NotifierQueueSize = %d, want 1024", cfg.Performance.NotifierQueueSize)
+	}
 
 	expectedReasons := []string{"OOMKilled", "Error", "CrashLoopBackOff"}
 	if len(cfg.Watch.Reasons) != len(expectedReasons) {
@@ -37,6 +49,11 @@ namespace: monitoring
 reports:
   path: /var/reports
   retention: 72h
+performance:
+  crash_workers: 8
+  crash_queue_size: 2048
+  notifier_workers: 3
+  notifier_queue_size: 4096
 watch:
   reasons:
     - OOMKilled
@@ -65,6 +82,18 @@ watch:
 	}
 	if cfg.Reports.Retention != 72*time.Hour {
 		t.Errorf("Reports.Retention = %v, want 72h", cfg.Reports.Retention)
+	}
+	if cfg.Performance.CrashWorkers != 8 {
+		t.Errorf("Performance.CrashWorkers = %d, want 8", cfg.Performance.CrashWorkers)
+	}
+	if cfg.Performance.CrashQueueSize != 2048 {
+		t.Errorf("Performance.CrashQueueSize = %d, want 2048", cfg.Performance.CrashQueueSize)
+	}
+	if cfg.Performance.NotifierWorkers != 3 {
+		t.Errorf("Performance.NotifierWorkers = %d, want 3", cfg.Performance.NotifierWorkers)
+	}
+	if cfg.Performance.NotifierQueueSize != 4096 {
+		t.Errorf("Performance.NotifierQueueSize = %d, want 4096", cfg.Performance.NotifierQueueSize)
 	}
 	if len(cfg.Watch.Reasons) != 2 {
 		t.Errorf("Watch.Reasons length = %d, want 2", len(cfg.Watch.Reasons))

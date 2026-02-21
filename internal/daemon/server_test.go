@@ -8,6 +8,7 @@ import (
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	"github.com/kadirbelkuyu/kubecrsh/internal/notifier"
 	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
+	dto "github.com/prometheus/client_model/go"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -160,4 +161,89 @@ func BenchmarkServer_readyHandler(b *testing.B) {
 		w := httptest.NewRecorder()
 		server.readyHandler(w, req)
 	}
+}
+
+func TestServer_handleCrash_QueueDropWhenFull(t *testing.T) {
+	server := &Server{
+		crashQueue: make(chan crashJob, 1),
+		metrics:    NewMetrics(),
+	}
+
+	first := domain.PodCrash{
+		Namespace:     "default",
+		PodName:       "pod-1",
+		ContainerName: "app",
+		Reason:        "Error",
+	}
+	second := domain.PodCrash{
+		Namespace:     "default",
+		PodName:       "pod-2",
+		ContainerName: "app",
+		Reason:        "Error",
+	}
+
+	server.handleCrash(first)
+	server.handleCrash(second)
+
+	if got := len(server.crashQueue); got != 1 {
+		t.Fatalf("crash queue length = %d, want 1", got)
+	}
+
+	if got := gaugeValue(t, server.metrics.CrashQueueDepth); got != 1 {
+		t.Fatalf("crash queue depth = %.0f, want 1", got)
+	}
+
+	if got := counterValue(t, server.metrics.QueueDropped.WithLabelValues("crash")); got != 1 {
+		t.Fatalf("dropped crash jobs = %.0f, want 1", got)
+	}
+}
+
+func TestServer_enqueueNotifications_QueueDropWhenFull(t *testing.T) {
+	server := &Server{
+		notifiers: []notifier.Notifier{
+			&mockNotifier{name: "one"},
+			&mockNotifier{name: "two"},
+		},
+		notifyQueue: make(chan notifyJob, 1),
+		metrics:     NewMetrics(),
+	}
+
+	report := domain.NewForensicReport(domain.PodCrash{
+		Namespace:     "default",
+		PodName:       "pod-1",
+		ContainerName: "app",
+		Reason:        "Error",
+	})
+
+	server.enqueueNotifications(*report)
+
+	if got := len(server.notifyQueue); got != 1 {
+		t.Fatalf("notify queue length = %d, want 1", got)
+	}
+
+	if got := gaugeValue(t, server.metrics.NotifyQueueDepth); got != 1 {
+		t.Fatalf("notify queue depth = %.0f, want 1", got)
+	}
+
+	if got := counterValue(t, server.metrics.QueueDropped.WithLabelValues("notify")); got != 1 {
+		t.Fatalf("dropped notify jobs = %.0f, want 1", got)
+	}
+}
+
+func gaugeValue(t *testing.T, g interface{ Write(*dto.Metric) error }) float64 {
+	t.Helper()
+	var m dto.Metric
+	if err := g.Write(&m); err != nil {
+		t.Fatalf("failed to read gauge value: %v", err)
+	}
+	return m.GetGauge().GetValue()
+}
+
+func counterValue(t *testing.T, c interface{ Write(*dto.Metric) error }) float64 {
+	t.Helper()
+	var m dto.Metric
+	if err := c.Write(&m); err != nil {
+		t.Fatalf("failed to read counter value: %v", err)
+	}
+	return m.GetCounter().GetValue()
 }

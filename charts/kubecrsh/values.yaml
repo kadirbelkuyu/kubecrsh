@@ -110,6 +110,11 @@ config:
       - Error
       - CrashLoopBackOff
       - ContainerStatusUnknown
+  performance:
+    crashWorkers: 4
+    crashQueueSize: 512
+    notifierWorkers: 4
+    notifierQueueSize: 1024
   api:
     reportsEnabled: false
     token: ""
