@@ -41,6 +41,11 @@ data:
         {{- range .Values.config.watch.reasons }}
         - {{ . }}
         {{- end }}
+    performance:
+      crash_workers: {{ .Values.config.performance.crashWorkers }}
+      crash_queue_size: {{ .Values.config.performance.crashQueueSize }}
+      notifier_workers: {{ .Values.config.performance.notifierWorkers }}
+      notifier_queue_size: {{ .Values.config.performance.notifierQueueSize }}
     api:
       reports_enabled: {{ .Values.config.api.reportsEnabled }}
       allow_full: {{ .Values.config.api.allowFull }}
