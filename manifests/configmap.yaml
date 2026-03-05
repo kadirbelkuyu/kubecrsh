@@ -14,6 +14,12 @@ data:
         - OOMKilled
         - Error
         - CrashLoopBackOff
+    leader_election:
+      enabled: false
+      lease_name: kubecrsh-leader-election
+      lease_duration: 15s
+      renew_deadline: 10s
+      retry_period: 2s
     elasticsearch:
       enabled: false
       addresses:

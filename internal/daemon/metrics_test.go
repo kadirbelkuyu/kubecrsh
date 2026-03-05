@@ -48,6 +48,12 @@ func TestNewMetrics(t *testing.T) {
 	if metrics.NotifyQueueWait == nil {
 		t.Error("NotifyQueueWait should not be nil")
 	}
+	if metrics.LeaderStatus == nil {
+		t.Error("LeaderStatus should not be nil")
+	}
+	if metrics.LeaderTransitions == nil {
+		t.Error("LeaderTransitions should not be nil")
+	}
 }
 
 func TestMetrics_CrashesTotal(t *testing.T) {
@@ -156,6 +162,43 @@ func TestMetrics_LabelConsistency(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestMetrics_Leader(t *testing.T) {
+	metrics := NewMetrics()
+
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(metrics.LeaderStatus, metrics.LeaderTransitions)
+
+	metrics.LeaderStatus.Set(1)
+	metrics.LeaderTransitions.Inc()
+	metrics.LeaderTransitions.Inc()
+
+	metricFamilies, err := registry.Gather()
+	if err != nil {
+		t.Fatalf("Failed to gather metrics: %v", err)
+	}
+
+	foundStatus := false
+	foundTransitions := false
+	for _, mf := range metricFamilies {
+		if mf.GetName() == "kubecrsh_leader_status" {
+			foundStatus = true
+		}
+		if mf.GetName() == "kubecrsh_leader_transitions_total" {
+			foundTransitions = true
+			if got := mf.GetMetric()[0].GetCounter().GetValue(); got != 2 {
+				t.Errorf("LeaderTransitions = %v, want 2", got)
+			}
+		}
+	}
+
+	if !foundStatus {
+		t.Error("kubecrsh_leader_status metric not found")
+	}
+	if !foundTransitions {
+		t.Error("kubecrsh_leader_transitions_total metric not found")
 	}
 }
 

@@ -11,14 +11,15 @@ import (
 )
 
 type Config struct {
-	Kubeconfig    string
-	Context       string
-	Namespace     string
-	Reports       ReportsConfig
-	API           APIConfig
-	Watch         WatchConfig
-	Performance   PerformanceConfig
-	Elasticsearch ElasticsearchConfig
+	Kubeconfig     string
+	Context        string
+	Namespace      string
+	Reports        ReportsConfig
+	API            APIConfig
+	Watch          WatchConfig
+	Performance    PerformanceConfig
+	LeaderElection LeaderElectionConfig `mapstructure:"leader_election"`
+	Elasticsearch  ElasticsearchConfig
 }
 
 type ReportsConfig struct {
@@ -52,6 +53,15 @@ type PerformanceConfig struct {
 	CrashQueueSize    int `mapstructure:"crash_queue_size"`
 	NotifierWorkers   int `mapstructure:"notifier_workers"`
 	NotifierQueueSize int `mapstructure:"notifier_queue_size"`
+}
+
+type LeaderElectionConfig struct {
+	Enabled        bool          `mapstructure:"enabled"`
+	LeaseName      string        `mapstructure:"lease_name"`
+	LeaseNamespace string        `mapstructure:"lease_namespace"`
+	LeaseDuration  time.Duration `mapstructure:"lease_duration"`
+	RenewDeadline  time.Duration `mapstructure:"renew_deadline"`
+	RetryPeriod    time.Duration `mapstructure:"retry_period"`
 }
 
 type ElasticsearchConfig struct {
@@ -101,6 +111,12 @@ func Load(cfgFile string) (*Config, error) {
 	v.SetDefault("performance.crash_queue_size", 512)
 	v.SetDefault("performance.notifier_workers", 4)
 	v.SetDefault("performance.notifier_queue_size", 1024)
+	v.SetDefault("leader_election.enabled", false)
+	v.SetDefault("leader_election.lease_name", "kubecrsh-leader-election")
+	v.SetDefault("leader_election.lease_namespace", "")
+	v.SetDefault("leader_election.lease_duration", "15s")
+	v.SetDefault("leader_election.renew_deadline", "10s")
+	v.SetDefault("leader_election.retry_period", "2s")
 	v.SetDefault("elasticsearch.enabled", false)
 	v.SetDefault("elasticsearch.addresses", []string{"http://localhost:9200"})
 	v.SetDefault("elasticsearch.username", "")
