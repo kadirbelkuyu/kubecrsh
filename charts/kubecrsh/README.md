@@ -86,6 +86,7 @@ helm install kubecrsh kubecrsh/kubecrsh \
 | `notifiers.slack.enabled` | Enable Slack notifications | `false` |
 | `notifiers.webhook.enabled` | Enable generic webhook | `false` |
 | `metrics.serviceMonitor.enabled` | Create ServiceMonitor | `false` |
+| `config.leaderElection.enabled` | Enable Lease-based single active processor | `false` |
 | `config.watch.reasons` | Crash reasons to watch | `[OOMKilled, Error, CrashLoopBackOff]` |
 | `config.reports.redaction.enabled` | Enable sensitive data redaction | `false` |
 
@@ -158,6 +159,7 @@ The chart implements security best practices by default:
 For production, use `values-production.yaml`:
 
 - Multiple replicas with PodDisruptionBudget
+- Leader election for single active crash processing
 - Pod anti-affinity for zone distribution
 - HorizontalPodAutoscaler
 - Increased resource limits

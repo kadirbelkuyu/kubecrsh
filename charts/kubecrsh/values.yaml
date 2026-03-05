@@ -115,6 +115,13 @@ config:
     crashQueueSize: 512
     notifierWorkers: 4
     notifierQueueSize: 1024
+  leaderElection:
+    enabled: false
+    leaseName: kubecrsh-leader-election
+    leaseNamespace: ""
+    leaseDuration: 15s
+    renewDeadline: 10s
+    retryPeriod: 2s
   api:
     reportsEnabled: false
     token: ""

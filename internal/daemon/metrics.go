@@ -17,6 +17,8 @@ type Metrics struct {
 	QueueDropped      *prometheus.CounterVec
 	CrashQueueWait    prometheus.Histogram
 	NotifyQueueWait   prometheus.Histogram
+	LeaderStatus      prometheus.Gauge
+	LeaderTransitions prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -102,6 +104,18 @@ func NewMetrics() *Metrics {
 				Name:    "kubecrsh_notify_queue_wait_seconds",
 				Help:    "Time spent waiting in notification queue in seconds",
 				Buckets: prometheus.DefBuckets,
+			},
+		),
+		LeaderStatus: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "kubecrsh_leader_status",
+				Help: "Leader election status for this pod (1=leader, 0=follower)",
+			},
+		),
+		LeaderTransitions: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "kubecrsh_leader_transitions_total",
+				Help: "Total number of successful leader acquisitions by this pod",
 			},
 		),
 	}

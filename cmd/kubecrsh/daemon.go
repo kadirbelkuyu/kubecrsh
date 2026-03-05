@@ -136,7 +136,15 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 		APIToken:          cfg.API.Token,
 		APIAllowFull:      cfg.API.AllowFull,
 		ReportRetention:   cfg.Reports.Retention,
-		Redactor:          redactorCfg,
+		LeaderElection: daemon.LeaderElectionConfig{
+			Enabled:        cfg.LeaderElection.Enabled,
+			LeaseName:      cfg.LeaderElection.LeaseName,
+			LeaseNamespace: cfg.LeaderElection.LeaseNamespace,
+			LeaseDuration:  cfg.LeaderElection.LeaseDuration,
+			RenewDeadline:  cfg.LeaderElection.RenewDeadline,
+			RetryPeriod:    cfg.LeaderElection.RetryPeriod,
+		},
+		Redactor: redactorCfg,
 	}
 
 	srv := daemon.New(client, daemonCfg)

@@ -46,6 +46,15 @@ data:
       crash_queue_size: {{ .Values.config.performance.crashQueueSize }}
       notifier_workers: {{ .Values.config.performance.notifierWorkers }}
       notifier_queue_size: {{ .Values.config.performance.notifierQueueSize }}
+    leader_election:
+      enabled: {{ .Values.config.leaderElection.enabled }}
+      lease_name: {{ .Values.config.leaderElection.leaseName | quote }}
+      {{- if .Values.config.leaderElection.leaseNamespace }}
+      lease_namespace: {{ .Values.config.leaderElection.leaseNamespace | quote }}
+      {{- end }}
+      lease_duration: {{ .Values.config.leaderElection.leaseDuration | quote }}
+      renew_deadline: {{ .Values.config.leaderElection.renewDeadline | quote }}
+      retry_period: {{ .Values.config.leaderElection.retryPeriod | quote }}
     api:
       reports_enabled: {{ .Values.config.api.reportsEnabled }}
       allow_full: {{ .Values.config.api.allowFull }}
