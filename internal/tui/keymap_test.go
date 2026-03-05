@@ -7,8 +7,8 @@ import (
 func TestKeyMap_ShortHelp(t *testing.T) {
 	bindings := keys.ShortHelp()
 
-	if len(bindings) != 4 {
-		t.Errorf("ShortHelp() returned %d bindings, want 4", len(bindings))
+	if len(bindings) != 5 {
+		t.Errorf("ShortHelp() returned %d bindings, want 5", len(bindings))
 	}
 }
 
@@ -19,7 +19,7 @@ func TestKeyMap_FullHelp(t *testing.T) {
 		t.Errorf("FullHelp() returned %d groups, want 3", len(groups))
 	}
 
-	expectedGroupSizes := []int{4, 3, 2}
+	expectedGroupSizes := []int{6, 4, 2}
 	for i, group := range groups {
 		if len(group) != expectedGroupSizes[i] {
 			t.Errorf("Group %d has %d bindings, want %d", i, len(group), expectedGroupSizes[i])
@@ -36,9 +36,12 @@ func TestKeyMap_KeyBindings(t *testing.T) {
 		{"Down", keys.Down},
 		{"Left", keys.Left},
 		{"Right", keys.Right},
+		{"Search", keys.Search},
+		{"Clear", keys.Clear},
 		{"Enter", keys.Enter},
 		{"Back", keys.Back},
 		{"Tab", keys.Tab},
+		{"Refresh", keys.Refresh},
 		{"Export", keys.Export},
 		{"Quit", keys.Quit},
 	}

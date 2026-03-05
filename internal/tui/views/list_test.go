@@ -52,12 +52,17 @@ func TestCrashItem_Description(t *testing.T) {
 
 func TestCrashItem_FilterValue(t *testing.T) {
 	report := createTestReport("default", "unique-pod-name", "Error", 1)
+	report.Crash.ContainerName = "main"
+	report.ID = "abc12345"
 	item := crashItem{report: *report}
 
 	filterValue := item.FilterValue()
 
-	if filterValue != "unique-pod-name" {
-		t.Errorf("FilterValue = %v, want unique-pod-name", filterValue)
+	required := []string{"default", "unique-pod-name", "main", "error", "abc12345"}
+	for _, token := range required {
+		if !strings.Contains(filterValue, token) {
+			t.Errorf("FilterValue should contain %q, got %q", token, filterValue)
+		}
 	}
 }
 
@@ -69,8 +74,8 @@ func TestNewListView(t *testing.T) {
 
 	view := NewListView(reports)
 
-	if view.list.Title != "Crash Reports" {
-		t.Errorf("List title = %v, want 'Crash Reports'", view.list.Title)
+	if !strings.Contains(view.list.Title, "Crash Watch") {
+		t.Errorf("List title should contain 'Crash Watch', got %q", view.list.Title)
 	}
 }
 
@@ -182,6 +187,89 @@ func TestListView_AddReport(t *testing.T) {
 
 	if view.IsEmpty() {
 		t.Error("View should not be empty after adding report")
+	}
+}
+
+func TestSortReports_CollectedAtDesc(t *testing.T) {
+	now := time.Now()
+	r1 := createTestReport("ns", "pod-1", "Error", 1)
+	r2 := createTestReport("ns", "pod-2", "Error", 1)
+	r3 := createTestReport("ns", "pod-3", "Error", 1)
+	r1.CollectedAt = now.Add(-3 * time.Minute)
+	r2.CollectedAt = now.Add(-1 * time.Minute)
+	r3.CollectedAt = now.Add(-2 * time.Minute)
+
+	sorted := sortReports([]*domain.ForensicReport{r1, r2, r3})
+
+	if len(sorted) != 3 {
+		t.Fatalf("sorted len = %d, want 3", len(sorted))
+	}
+	if sorted[0].Crash.PodName != "pod-2" {
+		t.Errorf("first pod = %s, want pod-2", sorted[0].Crash.PodName)
+	}
+	if sorted[1].Crash.PodName != "pod-3" {
+		t.Errorf("second pod = %s, want pod-3", sorted[1].Crash.PodName)
+	}
+	if sorted[2].Crash.PodName != "pod-1" {
+		t.Errorf("third pod = %s, want pod-1", sorted[2].Crash.PodName)
+	}
+}
+
+func TestCrashFilter_FreeText(t *testing.T) {
+	r1 := createTestReport("prod", "api", "OOMKilled", 137)
+	r2 := createTestReport("dev", "worker", "Error", 1)
+	targets := []string{
+		crashItem{report: *r1}.FilterValue(),
+		crashItem{report: *r2}.FilterValue(),
+	}
+
+	ranks := crashFilter("api", targets)
+	if len(ranks) != 1 {
+		t.Fatalf("expected 1 rank, got %d", len(ranks))
+	}
+	if ranks[0].Index != 0 {
+		t.Fatalf("expected matched index 0, got %d", ranks[0].Index)
+	}
+}
+
+func TestCrashFilter_FieldFilters(t *testing.T) {
+	r1 := createTestReport("prod", "api", "OOMKilled", 137)
+	r1.Crash.ContainerName = "main"
+	r2 := createTestReport("prod", "worker", "Error", 1)
+	r2.Crash.ContainerName = "sidecar"
+
+	targets := []string{
+		crashItem{report: *r1}.FilterValue(),
+		crashItem{report: *r2}.FilterValue(),
+	}
+
+	ranks := crashFilter("ns:prod reason:oom container:main exit:137", targets)
+	if len(ranks) != 1 {
+		t.Fatalf("expected 1 rank, got %d", len(ranks))
+	}
+	if ranks[0].Index != 0 {
+		t.Fatalf("expected matched index 0, got %d", ranks[0].Index)
+	}
+}
+
+func TestCrashFilter_WarnBoolean(t *testing.T) {
+	r1 := createTestReport("prod", "api", "Error", 1)
+	r1.AddWarning("logs unavailable")
+	r2 := createTestReport("prod", "worker", "Error", 1)
+
+	targets := []string{
+		crashItem{report: *r1}.FilterValue(),
+		crashItem{report: *r2}.FilterValue(),
+	}
+
+	ranksYes := crashFilter("warn:yes", targets)
+	if len(ranksYes) != 1 || ranksYes[0].Index != 0 {
+		t.Fatalf("warn:yes expected only index 0, got %+v", ranksYes)
+	}
+
+	ranksNo := crashFilter("warn:no", targets)
+	if len(ranksNo) != 1 || ranksNo[0].Index != 1 {
+		t.Fatalf("warn:no expected only index 1, got %+v", ranksNo)
 	}
 }
 
