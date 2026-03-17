@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -49,6 +50,8 @@ type errMsg struct {
 	err error
 }
 
+type tickMsg time.Time
+
 func New(client kubernetes.Interface, store *reporter.Store) model {
 	return model{
 		state:     stateList,
@@ -61,7 +64,7 @@ func New(client kubernetes.Interface, store *reporter.Store) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return m.loadReports()
+	return tea.Batch(m.loadReports(), tickCmd())
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -88,6 +91,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.state == stateList {
+				if m.listView.SettingFilter() {
+					break
+				}
 				if report := m.listView.SelectedReport(); report != nil {
 					m.detailView = views.NewDetailView(report)
 					m.detailView = m.detailView.SetSize(m.width, m.height-2)
@@ -100,6 +106,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state == stateDetail {
 				activeTab := (m.detailView.ActiveTab + 1) % 4
 				m.detailView = m.detailView.SetActiveTab(activeTab)
+				return m, nil
+			}
+
+		case "r":
+			if m.state == stateList {
+				if m.listView.SettingFilter() {
+					break
+				}
+				return m, m.loadReports()
+			}
+
+		case "c":
+			if m.state == stateList {
+				if m.listView.SettingFilter() {
+					break
+				}
+				m.listView = m.listView.ResetFilter()
 				return m, nil
 			}
 		}
@@ -122,6 +145,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg.err
 		return m, nil
+
+	case tickMsg:
+		return m, tickCmd()
 	}
 
 	var cmd tea.Cmd
@@ -185,4 +211,10 @@ func (m model) collectForensics(crash domain.PodCrash) tea.Cmd {
 
 func OnCrash(crash domain.PodCrash) tea.Msg {
 	return crashMsg{crash: crash}
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
 }

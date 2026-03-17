@@ -31,6 +31,21 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Performance.NotifierQueueSize != 1024 {
 		t.Errorf("Performance.NotifierQueueSize = %d, want 1024", cfg.Performance.NotifierQueueSize)
 	}
+	if cfg.LeaderElection.Enabled {
+		t.Errorf("LeaderElection.Enabled = %v, want false", cfg.LeaderElection.Enabled)
+	}
+	if cfg.LeaderElection.LeaseName != "kubecrsh-leader-election" {
+		t.Errorf("LeaderElection.LeaseName = %q, want kubecrsh-leader-election", cfg.LeaderElection.LeaseName)
+	}
+	if cfg.LeaderElection.LeaseDuration != 15*time.Second {
+		t.Errorf("LeaderElection.LeaseDuration = %v, want 15s", cfg.LeaderElection.LeaseDuration)
+	}
+	if cfg.LeaderElection.RenewDeadline != 10*time.Second {
+		t.Errorf("LeaderElection.RenewDeadline = %v, want 10s", cfg.LeaderElection.RenewDeadline)
+	}
+	if cfg.LeaderElection.RetryPeriod != 2*time.Second {
+		t.Errorf("LeaderElection.RetryPeriod = %v, want 2s", cfg.LeaderElection.RetryPeriod)
+	}
 
 	expectedReasons := []string{"OOMKilled", "Error", "CrashLoopBackOff"}
 	if len(cfg.Watch.Reasons) != len(expectedReasons) {
@@ -54,6 +69,13 @@ performance:
   crash_queue_size: 2048
   notifier_workers: 3
   notifier_queue_size: 4096
+leader_election:
+  enabled: true
+  lease_name: kubecrsh-test-lock
+  lease_namespace: kubecrsh
+  lease_duration: 30s
+  renew_deadline: 20s
+  retry_period: 5s
 watch:
   reasons:
     - OOMKilled
@@ -94,6 +116,24 @@ watch:
 	}
 	if cfg.Performance.NotifierQueueSize != 4096 {
 		t.Errorf("Performance.NotifierQueueSize = %d, want 4096", cfg.Performance.NotifierQueueSize)
+	}
+	if !cfg.LeaderElection.Enabled {
+		t.Errorf("LeaderElection.Enabled = %v, want true", cfg.LeaderElection.Enabled)
+	}
+	if cfg.LeaderElection.LeaseName != "kubecrsh-test-lock" {
+		t.Errorf("LeaderElection.LeaseName = %q, want kubecrsh-test-lock", cfg.LeaderElection.LeaseName)
+	}
+	if cfg.LeaderElection.LeaseNamespace != "kubecrsh" {
+		t.Errorf("LeaderElection.LeaseNamespace = %q, want kubecrsh", cfg.LeaderElection.LeaseNamespace)
+	}
+	if cfg.LeaderElection.LeaseDuration != 30*time.Second {
+		t.Errorf("LeaderElection.LeaseDuration = %v, want 30s", cfg.LeaderElection.LeaseDuration)
+	}
+	if cfg.LeaderElection.RenewDeadline != 20*time.Second {
+		t.Errorf("LeaderElection.RenewDeadline = %v, want 20s", cfg.LeaderElection.RenewDeadline)
+	}
+	if cfg.LeaderElection.RetryPeriod != 5*time.Second {
+		t.Errorf("LeaderElection.RetryPeriod = %v, want 5s", cfg.LeaderElection.RetryPeriod)
 	}
 	if len(cfg.Watch.Reasons) != 2 {
 		t.Errorf("Watch.Reasons length = %d, want 2", len(cfg.Watch.Reasons))

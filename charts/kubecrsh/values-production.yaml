@@ -56,6 +56,12 @@ config:
       - CrashLoopBackOff
       - ContainerStatusUnknown
       - Evicted
+  leaderElection:
+    enabled: true
+    leaseName: kubecrsh-leader-election
+    leaseDuration: 15s
+    renewDeadline: 10s
+    retryPeriod: 2s
 
 probes:
   liveness:

@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.2
 	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_model v0.6.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	k8s.io/api v0.35.0
@@ -55,7 +56,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

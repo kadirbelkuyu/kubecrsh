@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/kadirbelkuyu/kubecrsh/internal/collector"
@@ -15,6 +17,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 type Server struct {
@@ -40,9 +44,19 @@ type Server struct {
 	notifierQueueSize int
 	crashQueue        chan crashJob
 	notifyQueue       chan notifyJob
+	leaderElection    LeaderElectionConfig
 	redactor          interface {
 		Apply(report *domain.ForensicReport)
 	}
+}
+
+type LeaderElectionConfig struct {
+	Enabled        bool
+	LeaseName      string
+	LeaseNamespace string
+	LeaseDuration  time.Duration
+	RenewDeadline  time.Duration
+	RetryPeriod    time.Duration
 }
 
 type Config struct {
@@ -61,6 +75,7 @@ type Config struct {
 	ReportRetention   time.Duration
 	PruneInterval     time.Duration
 	CollectTimeout    time.Duration
+	LeaderElection    LeaderElectionConfig
 	Redactor          interface {
 		Apply(report *domain.ForensicReport)
 	}
@@ -82,6 +97,10 @@ const (
 	defaultCrashQueueSize    = 512
 	defaultNotifierWorkers   = 4
 	defaultNotifierQueueSize = 1024
+	defaultLeaseName         = "kubecrsh-leader-election"
+	defaultLeaseDuration     = 15 * time.Second
+	defaultRenewDeadline     = 10 * time.Second
+	defaultRetryPeriod       = 2 * time.Second
 )
 
 func New(client kubernetes.Interface, cfg Config) *Server {
@@ -99,6 +118,8 @@ func New(client kubernetes.Interface, cfg Config) *Server {
 		metrics.QueueDropped,
 		metrics.CrashQueueWait,
 		metrics.NotifyQueueWait,
+		metrics.LeaderStatus,
+		metrics.LeaderTransitions,
 	)
 
 	crashWorkers := cfg.CrashWorkers
@@ -140,8 +161,10 @@ func New(client kubernetes.Interface, cfg Config) *Server {
 		notifierQueueSize: notifierQueueSize,
 		crashQueue:        make(chan crashJob, crashQueueSize),
 		notifyQueue:       make(chan notifyJob, notifierQueueSize),
+		leaderElection:    normalizeLeaderElectionConfig(cfg.LeaderElection),
 		redactor:          cfg.Redactor,
 	}
+	srv.setLeaderStatus(false)
 
 	opts := []watcher.Option{watcher.WithReasons(cfg.Reasons)}
 	if cfg.Namespace != "" {
@@ -174,8 +197,38 @@ func (s *Server) Start(ctx context.Context) error {
 		Handler: mux,
 	}
 
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("http server error: %w", err)
+		}
+	}()
+
+	go func() {
+		var err error
+		if s.leaderElection.Enabled {
+			err = s.runWithLeaderElection(ctx)
+		} else {
+			err = s.runActivePipeline(ctx)
+		}
+
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return httpServer.Shutdown(shutdownCtx)
+	}
+}
+
+func (s *Server) runActivePipeline(ctx context.Context) error {
 	for i := 0; i < s.crashWorkers; i++ {
 		go s.runCrashWorker(ctx)
 	}
@@ -186,28 +239,152 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}
 
-	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errCh <- fmt.Errorf("http server error: %w", err)
-		}
-	}()
-
-	go func() {
-		if err := s.watcher.Start(ctx); err != nil {
-			errCh <- fmt.Errorf("watcher error: %w", err)
-		}
-	}()
-
 	go s.pruneLoop(ctx)
 
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		return httpServer.Shutdown(shutdownCtx)
+	if err := s.watcher.Start(ctx); err != nil {
+		return fmt.Errorf("watcher error: %w", err)
 	}
+
+	return nil
+}
+
+func (s *Server) runWithLeaderElection(ctx context.Context) error {
+	identity, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("resolve leader identity: %w", err)
+	}
+	identity = strings.TrimSpace(identity)
+	if identity == "" {
+		return fmt.Errorf("resolve leader identity: empty hostname")
+	}
+
+	lockNamespace := s.resolveLeaseNamespace()
+	lockName := strings.TrimSpace(s.leaderElection.LeaseName)
+
+	lock, err := resourcelock.New(
+		resourcelock.LeasesResourceLock,
+		lockNamespace,
+		lockName,
+		s.client.CoreV1(),
+		s.client.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
+			Identity: identity,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("create leader election lock: %w", err)
+	}
+
+	runtimeErrCh := make(chan error, 1)
+
+	elector, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		LeaseDuration:   s.leaderElection.LeaseDuration,
+		RenewDeadline:   s.leaderElection.RenewDeadline,
+		RetryPeriod:     s.leaderElection.RetryPeriod,
+		ReleaseOnCancel: true,
+		Name:            "kubecrsh-daemon",
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(leadCtx context.Context) {
+				s.setLeaderStatus(true)
+				s.metrics.LeaderTransitions.Inc()
+				fmt.Printf(
+					"Leader election acquired: identity=%s lease=%s/%s\n",
+					identity,
+					lockNamespace,
+					lockName,
+				)
+
+				if err := s.runActivePipeline(leadCtx); err != nil && leadCtx.Err() == nil {
+					select {
+					case runtimeErrCh <- err:
+					default:
+					}
+				}
+			},
+			OnStoppedLeading: func() {
+				s.setLeaderStatus(false)
+				if ctx.Err() != nil {
+					return
+				}
+				select {
+				case runtimeErrCh <- fmt.Errorf("leader election lost for %s", identity):
+				default:
+				}
+			},
+			OnNewLeader: func(currentIdentity string) {
+				if strings.TrimSpace(currentIdentity) == identity {
+					return
+				}
+				fmt.Printf("Leader changed: %s\n", currentIdentity)
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("init leader elector: %w", err)
+	}
+
+	go elector.Run(ctx)
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-runtimeErrCh:
+		return err
+	}
+}
+
+func (s *Server) setLeaderStatus(leader bool) {
+	if leader {
+		s.metrics.LeaderStatus.Set(1)
+		return
+	}
+	s.metrics.LeaderStatus.Set(0)
+}
+
+func (s *Server) resolveLeaseNamespace() string {
+	lockNamespace := strings.TrimSpace(s.leaderElection.LeaseNamespace)
+	if lockNamespace != "" {
+		return lockNamespace
+	}
+
+	lockNamespace = strings.TrimSpace(os.Getenv("POD_NAMESPACE"))
+	if lockNamespace != "" {
+		return lockNamespace
+	}
+
+	return "default"
+}
+
+func normalizeLeaderElectionConfig(cfg LeaderElectionConfig) LeaderElectionConfig {
+	cfg.LeaseName = strings.TrimSpace(cfg.LeaseName)
+	if cfg.LeaseName == "" {
+		cfg.LeaseName = defaultLeaseName
+	}
+
+	if cfg.LeaseDuration <= 0 {
+		cfg.LeaseDuration = defaultLeaseDuration
+	}
+
+	if cfg.RenewDeadline <= 0 || cfg.RenewDeadline >= cfg.LeaseDuration {
+		cfg.RenewDeadline = defaultRenewDeadline
+		if cfg.RenewDeadline >= cfg.LeaseDuration {
+			cfg.RenewDeadline = cfg.LeaseDuration / 2
+		}
+	}
+
+	if cfg.RetryPeriod <= 0 || cfg.RetryPeriod >= cfg.RenewDeadline {
+		cfg.RetryPeriod = defaultRetryPeriod
+		if cfg.RetryPeriod >= cfg.RenewDeadline {
+			cfg.RetryPeriod = cfg.RenewDeadline / 2
+		}
+	}
+
+	if cfg.RetryPeriod < time.Second {
+		cfg.RetryPeriod = time.Second
+	}
+
+	return cfg
 }
 
 func (s *Server) handleCrash(crash domain.PodCrash) {

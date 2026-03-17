@@ -15,6 +15,7 @@ kubecrsh is a Kubernetes debugging tool that captures logs, events, and pod stat
 - Kubernetes events collection from the past hour
 - Environment variables and exit code preservation
 - Slack and webhook notifications for instant alerts
+- Kubernetes Lease-based leader election for HA-safe single processing
 - Interactive terminal UI for forensic analysis
 - Prometheus metrics for observability
 - JSON-based report storage with optional compression

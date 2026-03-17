@@ -53,6 +53,10 @@ spec:
           args:
             {{- include "kubecrsh.daemonArgs" . | nindent 12 }}
           env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             {{- if .Values.notifiers.slack.enabled }}
             - name: SLACK_WEBHOOK
               valueFrom:
