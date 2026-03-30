@@ -24,7 +24,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Set up Go
-              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version: "1.25.6"
                   check-latest: true
@@ -33,7 +33,7 @@ jobs:
               run: go test ./...
 
             - name: Log in to GHCR
-              uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+              uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
@@ -49,7 +49,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Set up Helm
-              uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112
+              uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2
               with:
                   version: v3.14.0
 
@@ -68,7 +68,7 @@ jobs:
                   ls -la dist/
 
             - name: Upload manifests and Helm chart
-              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+              uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
               with:
                   files: |
                       manifests/*.yaml
