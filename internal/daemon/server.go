@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kadirbelkuyu/kubecrsh/internal/collector"
-	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
-	"github.com/kadirbelkuyu/kubecrsh/internal/notifier"
-	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
-	"github.com/kadirbelkuyu/kubecrsh/internal/watcher"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+
+	"github.com/kadirbelkuyu/kubecrsh/internal/collector"
+	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
+	"github.com/kadirbelkuyu/kubecrsh/internal/notifier"
+	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
+	"github.com/kadirbelkuyu/kubecrsh/internal/watcher"
 )
 
 type Server struct {

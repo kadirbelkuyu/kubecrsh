@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 )
 
 func TestNew(t *testing.T) {

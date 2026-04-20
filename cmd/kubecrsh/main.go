@@ -8,13 +8,14 @@ import (
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+
 	"github.com/kadirbelkuyu/kubecrsh/internal/config"
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
 	"github.com/kadirbelkuyu/kubecrsh/internal/tui"
 	"github.com/kadirbelkuyu/kubecrsh/internal/watcher"
 	"github.com/kadirbelkuyu/kubecrsh/pkg/kubernetes"
-	"github.com/spf13/cobra"
 )
 
 var (
