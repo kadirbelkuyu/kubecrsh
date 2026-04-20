@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 )
 
@@ -31,7 +33,7 @@ type ElasticStore struct {
 	mu        sync.RWMutex
 }
 
-func NewElasticStore(cfg ElasticConfig) (*ElasticStore, error) {
+func NewElasticStore(cfg ElasticConfig) (_ *ElasticStore, err error) {
 	esCfg := elasticsearch.Config{
 		Addresses: cfg.Addresses,
 		Username:  cfg.Username,
@@ -49,7 +51,7 @@ func NewElasticStore(cfg ElasticConfig) (*ElasticStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to ping elasticsearch: %w", err)
 	}
-	defer res.Body.Close()
+	defer closeOnReturn(res.Body, "close ping response body", &err)
 
 	if res.IsError() {
 		return nil, fmt.Errorf("elasticsearch ping failed: %s", res.Status())
@@ -72,12 +74,12 @@ func NewElasticStore(cfg ElasticConfig) (*ElasticStore, error) {
 	return store, nil
 }
 
-func (s *ElasticStore) ensureIndex() error {
+func (s *ElasticStore) ensureIndex() (err error) {
 	res, err := s.client.Indices.Exists([]string{s.indexName})
 	if err != nil {
 		return fmt.Errorf("failed to check index existence: %w", err)
 	}
-	defer res.Body.Close()
+	defer closeOnReturn(res.Body, "close index exists response body", &err)
 
 	if res.StatusCode == 200 {
 		return nil
@@ -128,7 +130,7 @@ func (s *ElasticStore) ensureIndex() error {
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
-	defer createRes.Body.Close()
+	defer closeOnReturn(createRes.Body, "close create index response body", &err)
 
 	if createRes.IsError() {
 		return fmt.Errorf("failed to create index: %s", createRes.Status())
@@ -137,7 +139,7 @@ func (s *ElasticStore) ensureIndex() error {
 	return nil
 }
 
-func (s *ElasticStore) Save(report *domain.ForensicReport) error {
+func (s *ElasticStore) Save(report *domain.ForensicReport) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -162,7 +164,7 @@ func (s *ElasticStore) Save(report *domain.ForensicReport) error {
 	if err != nil {
 		return fmt.Errorf("failed to index report: %w", err)
 	}
-	defer res.Body.Close()
+	defer closeOnReturn(res.Body, "close index response body", &err)
 
 	if res.IsError() {
 		return fmt.Errorf("failed to index report: %s", res.Status())
@@ -171,7 +173,7 @@ func (s *ElasticStore) Save(report *domain.ForensicReport) error {
 	return nil
 }
 
-func (s *ElasticStore) Load(id string) (*domain.ForensicReport, error) {
+func (s *ElasticStore) Load(id string) (_ *domain.ForensicReport, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -182,7 +184,7 @@ func (s *ElasticStore) Load(id string) (*domain.ForensicReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get report: %w", err)
 	}
-	defer res.Body.Close()
+	defer closeOnReturn(res.Body, "close get response body", &err)
 
 	if res.StatusCode == 404 {
 		return nil, fmt.Errorf("report not found: %s", id)
@@ -203,7 +205,7 @@ func (s *ElasticStore) Load(id string) (*domain.ForensicReport, error) {
 	return s.fromDocument(&result.Source), nil
 }
 
-func (s *ElasticStore) List() ([]*domain.ForensicReport, error) {
+func (s *ElasticStore) List() (_ []*domain.ForensicReport, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -224,7 +226,7 @@ func (s *ElasticStore) List() ([]*domain.ForensicReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to search reports: %w", err)
 	}
-	defer res.Body.Close()
+	defer closeOnReturn(res.Body, "close search response body", &err)
 
 	if res.IsError() {
 		return nil, fmt.Errorf("search failed: %s", res.Status())
@@ -248,6 +250,15 @@ func (s *ElasticStore) List() ([]*domain.ForensicReport, error) {
 	}
 
 	return reports, nil
+}
+
+func closeOnReturn(c io.Closer, context string, errp *error) {
+	if c == nil {
+		return
+	}
+	if closeErr := c.Close(); closeErr != nil && *errp == nil {
+		*errp = fmt.Errorf("%s: %w", context, closeErr)
+	}
 }
 
 type elasticDocument struct {

@@ -89,15 +89,16 @@ func (s *TelegramNotifier) Notify(report domain.ForensicReport) error {
 			lastErr = fmt.Errorf("failed to send telegram notification: %w", err)
 		} else {
 			respBody, readErr := readAndClose(resp)
-			if readErr != nil {
+			switch {
+			case readErr != nil:
 				lastErr = fmt.Errorf("failed to read telegram response: %w", readErr)
-			} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			case resp.StatusCode >= 200 && resp.StatusCode < 300:
 				var tr telegramResponse
 				if len(respBody) > 0 && json.Unmarshal(respBody, &tr) == nil && !tr.OK {
 					return fmt.Errorf("telegram rejected request: %s (code=%d)", strings.TrimSpace(tr.Description), tr.ErrorCode)
 				}
 				return nil
-			} else {
+			default:
 				desc, retryAfter := parseTelegramError(resp, respBody)
 				lastErr = fmt.Errorf("telegram returned status %d: %s", resp.StatusCode, desc)
 
@@ -106,9 +107,10 @@ func (s *TelegramNotifier) Notify(report domain.ForensicReport) error {
 				}
 
 				if attempt < 2 {
-					if resp.StatusCode == http.StatusTooManyRequests && retryAfter > 0 {
+					switch {
+					case resp.StatusCode == http.StatusTooManyRequests && retryAfter > 0:
 						time.Sleep(retryAfter)
-					} else {
+					default:
 						time.Sleep(backoff(attempt))
 					}
 				}

@@ -46,11 +46,14 @@ func (c *LogCollector) getLogs(ctx context.Context, namespace, podName, containe
 	if err != nil {
 		return nil, fmt.Errorf("failed to get log stream: %w", err)
 	}
-	defer stream.Close()
 
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, stream); err != nil {
+		_ = stream.Close()
 		return nil, fmt.Errorf("failed to read logs: %w", err)
+	}
+	if err := stream.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close log stream: %w", err)
 	}
 
 	logContent := buf.String()

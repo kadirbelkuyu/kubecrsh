@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 )
 
@@ -165,22 +166,22 @@ func (v DetailView) renderOverview() string {
 	b.WriteString(lipgloss.NewStyle().Bold(true).Render("Crash Details"))
 	b.WriteString("\n\n")
 
-	b.WriteString(fmt.Sprintf("Namespace:     %s\n", v.report.Crash.Namespace))
-	b.WriteString(fmt.Sprintf("Pod:           %s\n", v.report.Crash.PodName))
-	b.WriteString(fmt.Sprintf("Container:     %s\n", v.report.Crash.ContainerName))
-	b.WriteString(fmt.Sprintf("Reason:        %s\n", v.report.Crash.Reason))
-	b.WriteString(fmt.Sprintf("Exit Code:     %d\n", v.report.Crash.ExitCode))
-	b.WriteString(fmt.Sprintf("Restart Count: %d\n", v.report.Crash.RestartCount))
-	b.WriteString(fmt.Sprintf("Collected At:  %s\n", formatTime(v.report.CollectedAt)))
-	b.WriteString(fmt.Sprintf("Age:           %s\n", formatSince(v.report.CollectedAt)))
+	fmt.Fprintf(&b, "Namespace:     %s\n", v.report.Crash.Namespace)
+	fmt.Fprintf(&b, "Pod:           %s\n", v.report.Crash.PodName)
+	fmt.Fprintf(&b, "Container:     %s\n", v.report.Crash.ContainerName)
+	fmt.Fprintf(&b, "Reason:        %s\n", v.report.Crash.Reason)
+	fmt.Fprintf(&b, "Exit Code:     %d\n", v.report.Crash.ExitCode)
+	fmt.Fprintf(&b, "Restart Count: %d\n", v.report.Crash.RestartCount)
+	fmt.Fprintf(&b, "Collected At:  %s\n", formatTime(v.report.CollectedAt))
+	fmt.Fprintf(&b, "Age:           %s\n", formatSince(v.report.CollectedAt))
 
 	if !v.report.Crash.StartedAt.IsZero() {
-		b.WriteString(fmt.Sprintf("Started:       %s\n", formatTime(v.report.Crash.StartedAt)))
+		fmt.Fprintf(&b, "Started:       %s\n", formatTime(v.report.Crash.StartedAt))
 	}
 	if !v.report.Crash.FinishedAt.IsZero() {
-		b.WriteString(fmt.Sprintf("Finished:      %s\n", formatTime(v.report.Crash.FinishedAt)))
+		fmt.Fprintf(&b, "Finished:      %s\n", formatTime(v.report.Crash.FinishedAt))
 	}
-	b.WriteString(fmt.Sprintf("Duration:      %s\n", formatCrashDuration(v.report.Crash.StartedAt, v.report.Crash.FinishedAt)))
+	fmt.Fprintf(&b, "Duration:      %s\n", formatCrashDuration(v.report.Crash.StartedAt, v.report.Crash.FinishedAt))
 
 	if len(v.report.EnvVars) > 0 {
 		b.WriteString("\n")
@@ -192,7 +193,7 @@ func (v DetailView) renderOverview() string {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			b.WriteString(fmt.Sprintf("%s=%s\n", key, v.report.EnvVars[key]))
+			fmt.Fprintf(&b, "%s=%s\n", key, v.report.EnvVars[key])
 		}
 	}
 
@@ -201,7 +202,7 @@ func (v DetailView) renderOverview() string {
 		b.WriteString(lipgloss.NewStyle().Bold(true).Render("Warnings"))
 		b.WriteString("\n\n")
 		for _, warning := range v.report.Warnings {
-			b.WriteString(fmt.Sprintf("- %s\n", warning))
+			fmt.Fprintf(&b, "- %s\n", warning)
 		}
 	}
 
@@ -217,7 +218,7 @@ func (v DetailView) renderLogs(logs []string) string {
 
 	var b strings.Builder
 	for i, line := range logs {
-		b.WriteString(fmt.Sprintf("%5d | %s\n", i+1, line))
+		fmt.Fprintf(&b, "%5d | %s\n", i+1, line)
 	}
 	return b.String()
 }
@@ -250,12 +251,12 @@ func (v DetailView) renderEvents() string {
 			e.Reason,
 		)))
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("  %s\n", e.Message))
-		b.WriteString(fmt.Sprintf("  Count: %d | First: %s | Last: %s\n\n",
+		fmt.Fprintf(&b, "  %s\n", e.Message)
+		fmt.Fprintf(&b, "  Count: %d | First: %s | Last: %s\n\n",
 			e.Count,
 			formatTime(e.FirstSeen),
 			formatTime(e.LastSeen),
-		))
+		)
 	}
 
 	return b.String()
