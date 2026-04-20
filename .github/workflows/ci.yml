@@ -21,7 +21,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Set up Go
-              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version: "1.26.1"
                   check-latest: true
@@ -32,7 +32,7 @@ jobs:
 
             - name: SonarQube Cloud Scan
               if: ${{ env.SONAR_TOKEN != '' && github.actor != 'dependabot[bot]' }}
-              uses: SonarSource/sonarqube-scan-action@v5.0.0
+              uses: SonarSource/sonarqube-scan-action@v7.1.0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
                   fi
 
             - name: Upload coverage
-              uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
+              uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
               with:
                   file: ./coverage.out
                   flags: unittests
@@ -62,7 +62,7 @@ jobs:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
             - name: Set up Go
-              uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
+              uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
               with:
                   go-version: "1.26.1"
                   check-latest: true
@@ -74,7 +74,7 @@ jobs:
                   ./bin/kubecrsh --help
 
             - name: Upload artifact
-              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
                   name: kubecrsh-binary
                   path: bin/kubecrsh
