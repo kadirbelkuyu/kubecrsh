@@ -13,6 +13,8 @@ jobs:
         permissions:
             contents: read
             pull-requests: write
+        env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
               with:
@@ -21,7 +23,7 @@ jobs:
             - name: Set up Go
               uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
               with:
-                  go-version: "1.25.6"
+                  go-version: "1.26.1"
                   check-latest: true
                   cache: true
 
@@ -29,10 +31,21 @@ jobs:
               run: go test -v -race -coverprofile=coverage.out ./...
 
             - name: SonarQube Cloud Scan
-              uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8
+              if: ${{ env.SONAR_TOKEN != '' && github.actor != 'dependabot[bot]' }}
+              uses: SonarSource/sonarqube-scan-action@v5.0.0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+                  SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+
+            - name: Skip SonarQube Cloud Scan
+              if: ${{ env.SONAR_TOKEN == '' || github.actor == 'dependabot[bot]' }}
+              run: |
+                  if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+                      echo "Skipping SonarQube Cloud Scan for Dependabot pull requests because repository secrets are not exposed."
+                  else
+                      echo "Skipping SonarQube Cloud Scan because SONAR_TOKEN is unavailable for this run."
+                  fi
+
             - name: Upload coverage
               uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
               with:
@@ -51,7 +64,7 @@ jobs:
             - name: Set up Go
               uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
               with:
-                  go-version: "1.25.6"
+                  go-version: "1.26.1"
                   check-latest: true
                   cache: true
 
