@@ -14,6 +14,7 @@ import (
 	"github.com/kadirbelkuyu/kubecrsh/internal/redaction"
 	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
 	"github.com/kadirbelkuyu/kubecrsh/pkg/kubernetes"
+
 	"github.com/spf13/cobra"
 )
 

@@ -65,7 +65,6 @@ func (s *Store) SaveWithResult(report *domain.ForensicReport) (SaveResult, error
 }
 
 func (s *Store) saveLocked(report *domain.ForensicReport) (SaveResult, error) {
-
 	ext := ".json"
 	if s.compression == "gzip" || s.compression == "gz" {
 		ext = ".json.gz"
@@ -87,31 +86,36 @@ func (s *Store) saveLocked(report *domain.ForensicReport) (SaveResult, error) {
 	tmpPath := tmp.Name()
 	var bytesWritten int64
 
-	writeErr := func() error {
-		defer tmp.Close()
+	var w io.Writer = tmp
+	var gw *gzip.Writer
+	if ext == ".json.gz" {
+		gw = gzip.NewWriter(tmp)
+		w = gw
+	}
+	w = &countingWriter{w: w, n: &bytesWritten}
 
-		var w io.Writer = tmp
-		if ext == ".json.gz" {
-			gw := gzip.NewWriter(tmp)
-			defer gw.Close()
-			w = gw
-		}
-		w = &countingWriter{w: w, n: &bytesWritten}
-
-		enc := json.NewEncoder(w)
-		if err := enc.Encode(report); err != nil {
-			return fmt.Errorf("failed to encode report: %w", err)
-		}
-
-		if err := tmp.Sync(); err != nil {
-			return fmt.Errorf("failed to sync report: %w", err)
-		}
-
-		return nil
-	}()
-	if writeErr != nil {
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(report); err != nil {
+		_ = closeIgnoringError(gw)
+		_ = closeIgnoringError(tmp)
 		_ = os.Remove(tmpPath)
-		return SaveResult{}, writeErr
+		return SaveResult{}, fmt.Errorf("failed to encode report: %w", err)
+	}
+	if gw != nil {
+		if err := gw.Close(); err != nil {
+			_ = closeIgnoringError(tmp)
+			_ = os.Remove(tmpPath)
+			return SaveResult{}, fmt.Errorf("failed to close gzip writer: %w", err)
+		}
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = closeIgnoringError(tmp)
+		_ = os.Remove(tmpPath)
+		return SaveResult{}, fmt.Errorf("failed to sync report: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return SaveResult{}, fmt.Errorf("failed to close temp report: %w", err)
 	}
 
 	if err := replaceFile(tmpPath, path); err != nil {
@@ -189,12 +193,12 @@ func (s *Store) globAll() ([]string, error) {
 	return append(jsonFiles, gzFiles...), nil
 }
 
-func readJSONFile(path string, dst any) error {
+func readJSONFile(path string, dst any) (err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to open report: %w", err)
 	}
-	defer f.Close()
+	defer closeOnReturn(f, "close report file", &err)
 
 	var r io.Reader = f
 	if strings.HasSuffix(path, ".gz") {
@@ -202,7 +206,7 @@ func readJSONFile(path string, dst any) error {
 		if err != nil {
 			return fmt.Errorf("failed to open gzip report: %w", err)
 		}
-		defer gr.Close()
+		defer closeOnReturn(gr, "close gzip reader", &err)
 		r = gr
 	}
 
@@ -212,6 +216,13 @@ func readJSONFile(path string, dst any) error {
 	}
 
 	return nil
+}
+
+func closeIgnoringError(c io.Closer) error {
+	if c == nil {
+		return nil
+	}
+	return c.Close()
 }
 
 type countingWriter struct {

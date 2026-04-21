@@ -7,11 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/kadirbelkuyu/kubecrsh/internal/collector"
 	"github.com/kadirbelkuyu/kubecrsh/internal/domain"
 	"github.com/kadirbelkuyu/kubecrsh/internal/reporter"
 	"github.com/kadirbelkuyu/kubecrsh/internal/tui/views"
-	"k8s.io/client-go/kubernetes"
 )
 
 type viewState int

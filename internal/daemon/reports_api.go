@@ -61,7 +61,7 @@ func (s *Server) reportsListHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if offset >= len(reports) {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []reportSummary{}, "total": len(reports)})
+		writeJSON(w, map[string]any{"items": []reportSummary{}, "total": len(reports)})
 		return
 	}
 
@@ -75,7 +75,7 @@ func (s *Server) reportsListHandler(w http.ResponseWriter, r *http.Request) {
 		items = append(items, summarizeReport(rep))
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": len(reports)})
+	writeJSON(w, map[string]any{"items": items, "total": len(reports)})
 }
 
 func (s *Server) reportGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -109,11 +109,11 @@ func (s *Server) reportGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if full {
-		writeJSON(w, http.StatusOK, rep)
+		writeJSON(w, rep)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, summarizeReport(rep))
+	writeJSON(w, summarizeReport(rep))
 }
 
 func (s *Server) authorize(r *http.Request) bool {
@@ -153,9 +153,8 @@ func summarizeReport(r *domain.ForensicReport) reportSummary {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(v); err != nil {
 		fmt.Printf("Failed to write JSON response: %v\n", err)
