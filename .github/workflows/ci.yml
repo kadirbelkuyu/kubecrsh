@@ -32,7 +32,7 @@ jobs:
 
             - name: SonarQube Cloud Scan
               if: ${{ env.SONAR_TOKEN != '' && github.actor != 'dependabot[bot]' }}
-              uses: SonarSource/sonarqube-scan-action@v8.0.0
+              uses: SonarSource/sonarqube-scan-action@v8.1.0
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
                   fi
 
             - name: Upload coverage
-              uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
+              uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
               with:
                   file: ./coverage.out
                   flags: unittests
