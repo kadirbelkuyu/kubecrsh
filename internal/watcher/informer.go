@@ -17,14 +17,23 @@ import (
 type CrashHandler func(crash domain.PodCrash)
 
 type Watcher struct {
-	client            kubernetes.Interface
-	namespace         string
-	factory           informers.SharedInformerFactory
-	handler           CrashHandler
-	reasons           map[string]bool
-	lastNotifications map[string]time.Time
-	dedupTTL          time.Duration
-	mu                sync.RWMutex
+	client      kubernetes.Interface
+	namespace   string
+	factory     informers.SharedInformerFactory
+	handler     CrashHandler
+	reasons     map[string]bool
+	crashStates map[containerKey]crashState
+	dedupTTL    time.Duration
+	mu          sync.RWMutex
+}
+
+type containerKey struct {
+	podIdentity   string
+	containerName string
+}
+
+type crashState struct {
+	readySince time.Time
 }
 
 type Option func(*Watcher)
@@ -45,7 +54,9 @@ func WithReasons(reasons []string) Option {
 
 func WithDedupTTL(ttl time.Duration) Option {
 	return func(w *Watcher) {
-		w.dedupTTL = ttl
+		if ttl > 0 {
+			w.dedupTTL = ttl
+		}
 	}
 }
 
@@ -58,8 +69,8 @@ func New(client kubernetes.Interface, handler CrashHandler, opts ...Option) *Wat
 			"Error":            true,
 			"CrashLoopBackOff": true,
 		},
-		lastNotifications: make(map[string]time.Time),
-		dedupTTL:          5 * time.Minute,
+		crashStates: make(map[containerKey]crashState),
+		dedupTTL:    5 * time.Minute,
 	}
 
 	for _, opt := range opts {
@@ -94,6 +105,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 			w.checkPodOnAdd(pod)
 		},
 		UpdateFunc: w.onUpdate,
+		DeleteFunc: w.onDelete,
 	})
 
 	factory.Start(ctx.Done())
@@ -102,31 +114,8 @@ func (w *Watcher) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to sync cache")
 	}
 
-	go w.cleanupCacheLoop(ctx)
-
 	<-ctx.Done()
 	return nil
-}
-
-func (w *Watcher) cleanupCacheLoop(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			w.mu.Lock()
-			now := time.Now()
-			for k, t := range w.lastNotifications {
-				if now.Sub(t) > w.dedupTTL*2 {
-					delete(w.lastNotifications, k)
-				}
-			}
-			w.mu.Unlock()
-		}
-	}
 }
 
 func (w *Watcher) onUpdate(oldObj, newObj interface{}) {
@@ -150,10 +139,13 @@ func (w *Watcher) detectCrashes(oldPod, newPod *corev1.Pod) {
 		}
 
 		if crash := w.checkContainerCrash(newPod, cs, oldStatus); crash != nil {
-			if w.shouldNotify(crash) {
+			if w.shouldNotify(newPod, cs.Name) {
 				w.handler(*crash)
 			}
+			continue
 		}
+
+		w.observeContainer(newPod, cs)
 	}
 }
 
@@ -260,26 +252,99 @@ func (w *Watcher) shouldHandle(reason string) bool {
 	return w.reasons[reason]
 }
 
-func (w *Watcher) shouldNotify(crash *domain.PodCrash) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	key := fmt.Sprintf("%s/%s/%s/%s", crash.Namespace, crash.PodName, crash.ContainerName, crash.Reason)
-
-	lastTime, exists := w.lastNotifications[key]
-	if exists && time.Since(lastTime) < w.dedupTTL {
-		return false
+func (w *Watcher) shouldNotify(pod *corev1.Pod, containerName string) bool {
+	key := containerKey{
+		podIdentity:   podIdentity(pod),
+		containerName: containerName,
 	}
 
-	w.lastNotifications[key] = time.Now()
-	return true
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	state, exists := w.crashStates[key]
+	now := time.Now()
+	if exists && !state.readySince.IsZero() && now.Sub(state.readySince) >= w.dedupTTL {
+		delete(w.crashStates, key)
+		exists = false
+	}
+
+	w.crashStates[key] = crashState{}
+	return !exists
 }
 
 func (w *Watcher) checkPodOnAdd(pod *corev1.Pod) {
 	for _, cs := range pod.Status.ContainerStatuses {
 		if crash := w.checkContainerCrash(pod, cs, nil); crash != nil {
-			if w.shouldNotify(crash) {
+			if w.shouldNotify(pod, cs.Name) {
 				w.handler(*crash)
 			}
+			continue
+		}
+
+		w.observeContainer(pod, cs)
+	}
+}
+
+func (w *Watcher) observeContainer(pod *corev1.Pod, cs corev1.ContainerStatus) {
+	key := containerKey{
+		podIdentity:   podIdentity(pod),
+		containerName: cs.Name,
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	state, exists := w.crashStates[key]
+	if !exists {
+		return
+	}
+
+	if cs.State.Running == nil || !cs.Ready {
+		state.readySince = time.Time{}
+		w.crashStates[key] = state
+		return
+	}
+
+	if state.readySince.IsZero() {
+		state.readySince = time.Now()
+		w.crashStates[key] = state
+		return
+	}
+
+	if time.Since(state.readySince) >= w.dedupTTL {
+		delete(w.crashStates, key)
+		return
+	}
+
+	w.crashStates[key] = state
+}
+
+func (w *Watcher) onDelete(obj interface{}) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		pod, _ = tombstone.Obj.(*corev1.Pod)
+	}
+	if pod == nil {
+		return
+	}
+
+	identity := podIdentity(pod)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for key := range w.crashStates {
+		if key.podIdentity == identity {
+			delete(w.crashStates, key)
 		}
 	}
+}
+
+func podIdentity(pod *corev1.Pod) string {
+	if pod.UID != "" {
+		return string(pod.UID)
+	}
+	return fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
 }
